@@ -16,14 +16,14 @@ import { Helmet } from "react-helmet";
 export default function ContentSecurityPolicy() {
   return (
     <Helmet>
-      <meta
-        http-equiv="Content-Security-Policy"
-        content={`default-src 'self';
-              script-src 'self' 'nonce-${process.env.REACT_APP_NONCE}' cdn.jsdelivr.net assets.adobedtm.com;
-              style-src 'self' 'unsafe-inline';
-              img-src * data:;
-              connect-src 'self' *.adobedc.net *.demdex.net`}
-      />
+      {/*<meta*/}
+      {/*  http-equiv="Content-Security-Policy"*/}
+      {/*  content={`default-src 'self';*/}
+      {/*        script-src 'self' 'nonce-${process.env.REACT_APP_NONCE}' cdn.jsdelivr.net assets.adobedtm.com;*/}
+      {/*        style-src 'self' 'unsafe-inline';*/}
+      {/*        img-src * data:;*/}
+      {/*        connect-src 'self' *.adobedc.net *.demdex.net`}*/}
+      {/*/>*/}
     </Helmet>
   );
 }

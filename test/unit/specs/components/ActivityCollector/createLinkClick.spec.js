@@ -28,12 +28,12 @@ describe("ActivityCollector::createLinkClick", () => {
   };
   const supportedLinkElement = {
     tagName: "A",
-    href: "index.html",
+    href: "index_bup.html",
     nodeType: 1
   };
   const unsupportedLinkElement = {
     tagName: "LINK",
-    href: "index.html",
+    href: "index_bup.html",
     nodeType: 1
   };
   const linkClick = createLinkClick(mockWindow, config);

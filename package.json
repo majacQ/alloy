@@ -20,7 +20,7 @@
     "test:functional:cron:prod": "ALLOY_ENV=\"prod\" testcafe 'browserstack:chrome:Windows 10'",
     "test:functional:api": "testcafe chrome:headless",
     "sandbox:build": "cd sandbox && npm run build",
-    "dev": "concurrently --names build,sandbox \"rollup -c -w\" \"cd sandbox && export REACT_APP_NONCE=321 && npm start\"",
+    "dev": "concurrently --names build,sandbox \"rollup -c -w\" \"http-server sandbox/public -p 80\"",
     "build": "npm run format && npm run lint && npm run clean && concurrently \"rollup -c --environment BUILD:prodStandalone\" \"rollup -c --environment MINIFY,BUILD:prodStandalone\" \"rollup -c --environment BUILD:prodReactor\" && echo \"Base Code:\" && terser src/baseCode/index.js --mangle --compress unused=false",
     "checkthattestfilesexist": "./scripts/checkThatTestFilesExist.js"
   },
@@ -64,7 +64,8 @@
     "@adobe/reactor-object-assign": "^1.0.0",
     "@adobe/reactor-query-string": "^1.0.0",
     "css.escape": "^1.5.1",
-    "uuid": "^3.3.2"
+    "uuid": "^3.3.2",
+    "web-vitals": "^1.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.2.2",

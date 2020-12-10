@@ -61,6 +61,7 @@ function HomeWithHistory({ history }) {
   return (
     <div>
       <ContentSecurityPolicy />
+      <button id="send-it">Send Performance Metrics</button>
       <section>
         <div className="personalization-container">
           <h2>Some awesome default content.</h2>

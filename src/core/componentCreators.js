@@ -19,6 +19,8 @@ import createContext from "../components/Context";
 import createPrivacy from "../components/Privacy";
 import createEventMerge from "../components/EventMerge";
 import createLibraryInfo from "../components/LibraryInfo";
+import createPerformance from "../components/Performance";
+import createHealth from "../components/Health";
 
 // TODO: Register the Components here statically for now. They might be registered differently.
 // TODO: Figure out how sub-components will be made available/registered
@@ -31,5 +33,7 @@ export default [
   createContext,
   createPrivacy,
   createEventMerge,
-  createLibraryInfo
+  createLibraryInfo,
+  createPerformance,
+  createHealth
 ];
