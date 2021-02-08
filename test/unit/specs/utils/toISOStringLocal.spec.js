@@ -24,10 +24,20 @@ describe("toISOStringLocal", () => {
     expect(toISOStringLocal(date)).toEqual("2019-12-31T22:36:00.000+05:30");
   });
 
-  it("handles a weird offset", () => {
+  it("handles a weird offset 1", () => {
     const date = new Date("January 01, 2020 00:00:42");
-    spyOn(date, "getTimezoneOffset").and.returnValue(-176);
-    expect(toISOStringLocal(date)).toEqual("2020-01-01T00:00:42.000+02:56");
+    spyOn(date, "getTimezoneOffset").and.returnValue(105);
+    expect(toISOStringLocal(date)).toEqual("2020-01-01T00:00:42.000-01:45");
+  });
+  it("handles a weird offset 2", () => {
+    const date = new Date("January 01, 2020 00:00:42");
+    spyOn(date, "getTimezoneOffset").and.returnValue(-105);
+    expect(toISOStringLocal(date)).toEqual("2020-01-01T00:00:42.000+01:45");
+  });
+  it("handles a weird offset 3", () => {
+    const date = new Date("January 01, 2020 00:00:42");
+    spyOn(date, "getTimezoneOffset").and.returnValue(5655);
+    expect(toISOStringLocal(date)).toEqual("2020-01-01T00:00:42.000-22:15");
   });
 
   it("handles a UTC timezone", () => {

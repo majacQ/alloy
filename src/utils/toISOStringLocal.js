@@ -31,7 +31,7 @@ export default date => {
   // ahead. For example, for time zone UTC+10:00, -600 will be returned.
   const timezoneOffset = date.getTimezoneOffset();
   const ts = timezoneOffset > 0 ? "-" : "+";
-  const th = padStart(Math.floor(Math.abs(timezoneOffset) / 60), 2, "0");
+  const th = padStart(Math.floor(Math.abs(timezoneOffset) / 60) % 24, 2, "0");
   const tm = padStart(Math.abs(timezoneOffset) % 60, 2, "0");
 
   return `${YYYY}-${MM}-${DD}T${hh}:${mm}:${ss}.${mmm}${ts}${th}:${tm}`;
