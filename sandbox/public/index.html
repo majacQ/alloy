@@ -78,8 +78,8 @@
           location.host.indexOf("alloyio.com") !== -1
             ? "firstparty.alloyio.com"
             : undefined,
-        edgeConfigId: "bc1a10e0-aee4-4e0e-ac5b-cdbb9abbec83:dev",
-        orgId: "5BFE274A5F6980A50A495C08@AdobeOrg",
+        edgeConfigId: "7f256d21-f4ee-473e-8e66-1fb57f32c0c4:prod",
+        orgId: "97D1F3F459CE0AD80A495CBE@AdobeOrg",
         debugEnabled: true,
         idMigrationEnabled: !(
           getUrlParameter("idMigrationEnabled") === "false"
@@ -97,15 +97,6 @@
             data.campaign = campaignParam;
           }
         }
-      });
-
-      // For Testing multiple instances.
-      // We use a different orgId and edgeConfigId.
-      organizationTwo("configure", {
-        edgeConfigId: "9999999",
-        orgId: "97D1F3F459CE0AD80A495CBE@AdobeOrg",
-        debugEnabled: true,
-        clickCollectionEnabled: false
       });
     </script>
   </head>

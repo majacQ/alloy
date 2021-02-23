@@ -12,8 +12,54 @@ governing permissions and limitations under the License.
 import { isEmptyObject } from "../../utils";
 import { DOM_ACTION } from "./constants/schema";
 import PAGE_WIDE_SCOPE from "./constants/scope";
+import evaluate from "./odd";
 
 const DECISIONS_HANDLE = "personalization:decisions";
+const ODD_HANDLE = "personalization:odd";
+
+const isOddPresent = oddDetails => {
+  if (oddDetails.length === 0) {
+    return false;
+  }
+
+  if (!oddDetails[0].url) {
+    return false;
+  }
+
+  return true;
+};
+
+const fetchArtifact = oddDetails => {
+  return fetch(oddDetails[0].url)
+    .then(r => r.json())
+    .catch(() => ({}));
+};
+
+const createContext = () => {
+  // this should be a real context, we use dummy values for now
+  return {
+    scope: PAGE_WIDE_SCOPE
+  };
+};
+
+const evaluateArtifact = artifact => {
+  const context = createContext();
+
+  return evaluate({ artifact, context });
+};
+
+const getUnprocessedDecisions = response => {
+  const oddDetails = response.getPayloadsByType(ODD_HANDLE);
+  const serverSideDecisions = response.getPayloadsByType(DECISIONS_HANDLE);
+
+  if (!isOddPresent(oddDetails)) {
+    return Promise.resolve(serverSideDecisions);
+  }
+
+  return fetchArtifact(oddDetails)
+    .then(evaluateArtifact)
+    .then(decisions => [...decisions, ...serverSideDecisions]);
+};
 
 export default ({
   decisionsExtractor,
@@ -22,53 +68,55 @@ export default ({
   showContainers
 }) => {
   return ({ decisionsDeferred, personalizationDetails, response }) => {
-    const unprocessedDecisions = response.getPayloadsByType(DECISIONS_HANDLE);
-    const viewName = personalizationDetails.getViewName();
-    if (unprocessedDecisions.length === 0) {
-      showContainers();
-      decisionsDeferred.resolve({});
-      return { decisions: [] };
-    }
+    return getUnprocessedDecisions(response).then(unprocessedDecisions => {
+      const viewName = personalizationDetails.getViewName();
 
-    const {
-      domActionDecisions,
-      nonDomActionDecisions
-    } = decisionsExtractor.groupDecisionsBySchema({
-      decisions: unprocessedDecisions,
-      schema: DOM_ACTION
-    });
-    const {
-      pageWideScopeDecisions,
-      nonPageWideScopeDecisions
-    } = decisionsExtractor.groupDecisionsByScope({
-      decisions: domActionDecisions,
-      scope: PAGE_WIDE_SCOPE
-    });
-
-    if (isEmptyObject(nonPageWideScopeDecisions)) {
-      decisionsDeferred.resolve({});
-    } else {
-      decisionsDeferred.resolve(nonPageWideScopeDecisions);
-    }
-
-    if (personalizationDetails.isRenderDecisions()) {
-      executeDecisions(pageWideScopeDecisions);
-      if (viewName) {
-        executeCachedViewDecisions({ viewName });
+      if (unprocessedDecisions.length === 0) {
+        showContainers();
+        decisionsDeferred.resolve({});
+        return { decisions: [] };
       }
-      showContainers();
-      return { decisions: nonDomActionDecisions };
-    }
 
-    const decisionsToBeReturned = [
-      ...pageWideScopeDecisions,
-      ...nonDomActionDecisions
-    ];
+      const {
+        domActionDecisions,
+        nonDomActionDecisions
+      } = decisionsExtractor.groupDecisionsBySchema({
+        decisions: unprocessedDecisions,
+        schema: DOM_ACTION
+      });
+      const {
+        pageWideScopeDecisions,
+        nonPageWideScopeDecisions
+      } = decisionsExtractor.groupDecisionsByScope({
+        decisions: domActionDecisions,
+        scope: PAGE_WIDE_SCOPE
+      });
 
-    if (viewName && nonPageWideScopeDecisions[viewName]) {
-      decisionsToBeReturned.push(...nonPageWideScopeDecisions[viewName]);
-    }
+      if (isEmptyObject(nonPageWideScopeDecisions)) {
+        decisionsDeferred.resolve({});
+      } else {
+        decisionsDeferred.resolve(nonPageWideScopeDecisions);
+      }
 
-    return { decisions: decisionsToBeReturned };
+      if (personalizationDetails.isRenderDecisions()) {
+        executeDecisions(pageWideScopeDecisions);
+        if (viewName) {
+          executeCachedViewDecisions({ viewName });
+        }
+        showContainers();
+        return { decisions: nonDomActionDecisions };
+      }
+
+      const decisionsToBeReturned = [
+        ...pageWideScopeDecisions,
+        ...nonDomActionDecisions
+      ];
+
+      if (viewName && nonPageWideScopeDecisions[viewName]) {
+        decisionsToBeReturned.push(...nonPageWideScopeDecisions[viewName]);
+      }
+
+      return { decisions: decisionsToBeReturned };
+    });
   };
 };
