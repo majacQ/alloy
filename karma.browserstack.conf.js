@@ -50,6 +50,9 @@ module.exports = config => {
       karmaBrowserStackLauncher
     ],
 
-    reporters: ["dots", "BrowserStack"]
+    reporters: ["dots", "BrowserStack"],
+    browserStack: {
+      networkLogs: true
+    }
   });
 };
