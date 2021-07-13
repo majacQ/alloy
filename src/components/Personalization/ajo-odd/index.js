@@ -76,7 +76,7 @@ const handleAction = (step, journeyContext) => {
   }
 
   const { variants = [] } = step;
-  const { event } = journeyContext;
+  const { event = {} } = journeyContext;
 
   return variants
     .map(e => e.body)

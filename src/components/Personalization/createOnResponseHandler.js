@@ -10,18 +10,41 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 import isNonEmptyArray from "../../utils/isNonEmptyArray";
+import find from "../../utils/find";
+import isEmptyObject from "../../utils/isEmptyObject";
+import getDecisions from "./ajo-odd";
+import { hasItem, getItem, RULES, setItem } from "./ajo-odd/storage";
 import { DECISIONS_DEPRECATED_WARNING } from "./constants/loggerMessage";
 
 const DECISIONS_HANDLE = "personalization:decisions";
 const RULES_HANDLE = "personalization:odd-rules";
 
-const getOddDecisions = response => {
-  const rules = response.getPayloadsByType(RULES_HANDLE);
+const getOddDecisions = (personalizationDetails, response) => {
+  const event = personalizationDetails.getEvent();
 
-  // eslint-disable-next-line no-console
-  console.log("ODD rules", rules);
+  if (hasItem(RULES)) {
+    const data = getItem(RULES);
 
-  return [];
+    return getDecisions(event, data.journeys);
+  }
+
+  const rules = response.getPayloadsByType(RULES_HANDLE) || [];
+
+  if (rules.length === 0) {
+    return [];
+  }
+
+  // Here we fetch ONLY AJO rules
+  const data = find(rules, e => e.provider === "ajo");
+  const { journeys = {} } = data || {};
+
+  if (isEmptyObject(journeys)) {
+    return [];
+  }
+
+  setItem(RULES, data);
+
+  return getDecisions(event, journeys);
 };
 
 export default ({
@@ -33,9 +56,9 @@ export default ({
   logger
 }) => {
   return ({ decisionsDeferred, personalizationDetails, response }) => {
-    const unprocessedDecisions = response.getPayloadsByType(DECISIONS_HANDLE);
-    // eslint-disable-next-line no-unused-vars
-    const oddDecisions = getOddDecisions(response);
+    const serverDecisions = response.getPayloadsByType(DECISIONS_HANDLE);
+    const oddDecisions = getOddDecisions(personalizationDetails, response);
+    const unprocessedDecisions = [...serverDecisions, ...oddDecisions];
     const viewName = personalizationDetails.getViewName();
 
     // if personalization payload is empty return empty decisions array

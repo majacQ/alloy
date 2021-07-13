@@ -60,6 +60,14 @@ export default ({ renderDecisions, decisionScopes, event, viewCache }) => {
     },
     shouldUseCachedData() {
       return this.hasViewName() && this.isCacheInitialized();
+    },
+    getEvent() {
+      const details = this.createQueryDetails();
+
+      return {
+        decisionScopes: details.decisionScopes,
+        xdm: event.toJSON().xdm
+      };
     }
   };
 };

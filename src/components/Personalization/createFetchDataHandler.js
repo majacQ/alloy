@@ -10,6 +10,26 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
+import { hasItem, RULES } from "./ajo-odd/storage";
+
+const hideContainersIfRequired = (details, func, config) => {
+  const { prehidingStyle } = config;
+
+  if (details.isRenderDecisions() && !hasItem(RULES)) {
+    func(prehidingStyle);
+  }
+};
+
+const mergeQueryIfRequired = (details, func, event) => {
+  if (hasItem(RULES)) {
+    // If we have ODD rules do not fetch personalization from edge
+    func(event, { enabled: false });
+    return;
+  }
+
+  func(event, details.createQueryDetails());
+};
+
 export default ({
   config,
   responseHandler,
@@ -24,16 +44,14 @@ export default ({
     onResponse,
     onRequestFailure
   }) => {
-    const { prehidingStyle } = config;
+    hideContainersIfRequired(personalizationDetails, hideContainers, config);
 
-    if (personalizationDetails.isRenderDecisions()) {
-      hideContainers(prehidingStyle);
-    }
-    mergeQuery(event, personalizationDetails.createQueryDetails());
+    mergeQueryIfRequired(personalizationDetails, mergeQuery, event);
 
     onResponse(({ response }) =>
       responseHandler({ decisionsDeferred, personalizationDetails, response })
     );
+
     onRequestFailure(() => {
       decisionsDeferred.reject();
       showContainers();
