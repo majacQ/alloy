@@ -13,6 +13,16 @@ import isNonEmptyArray from "../../utils/isNonEmptyArray";
 import { DECISIONS_DEPRECATED_WARNING } from "./constants/loggerMessage";
 
 const DECISIONS_HANDLE = "personalization:decisions";
+const RULES_HANDLE = "personalization:odd-rules";
+
+const getOddDecisions = response => {
+  const rules = response.getPayloadsByType(RULES_HANDLE);
+
+  // eslint-disable-next-line no-console
+  console.log("ODD rules", rules);
+
+  return [];
+};
 
 export default ({
   autoRenderingHandler,
@@ -24,6 +34,8 @@ export default ({
 }) => {
   return ({ decisionsDeferred, personalizationDetails, response }) => {
     const unprocessedDecisions = response.getPayloadsByType(DECISIONS_HANDLE);
+    // eslint-disable-next-line no-unused-vars
+    const oddDecisions = getOddDecisions(response);
     const viewName = personalizationDetails.getViewName();
 
     // if personalization payload is empty return empty decisions array
