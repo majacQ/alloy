@@ -1,0 +1,2 @@
+(self.webpackChunkalloy_sandbox=self.webpackChunkalloy_sandbox||[]).push([[234],{7537:function(n,t,e){"use strict";e.r(t),e.d(t,{_frontmatter:function(){return m},default:function(){return d}});var o=e(2122),r=e(9756),u=(e(5007),e(4983)),a=e(3042),s=e(7853),c=["components"],m={},f={_frontmatter:m},p=a.Z;function d(n){var t=n.components,e=(0,r.Z)(n,c);return(0,u.mdx)(p,(0,o.Z)({},f,e,{components:t,mdxType:"MDXLayout"}),(0,u.mdx)(s.Z,{mdxType:"EventMerge"}))}d.isMDXComponent=!0}}]);
+//# sourceMappingURL=component---src-pages-eventmerge-index-md-b1c10f4bd9dbee642bd5.js.map
