@@ -6,5 +6,12 @@ module.exports = {
   },
   globals: {
     turbine: "readonly"
+  },
+  // Needed for @babel/eslint-parser that we've configured
+  // in the top-level .eslintrc file.
+  parserOptions: {
+    babelOptions: {
+      configFile: "../babel.config.js"
+    }
   }
 };

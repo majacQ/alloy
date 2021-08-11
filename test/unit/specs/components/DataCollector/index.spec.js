@@ -15,6 +15,7 @@ import { noop } from "../../../../../src/utils";
 describe("Event Command", () => {
   let event;
   let logger;
+  let lifecycle;
   let eventManager;
   let sendEventCommand;
   beforeEach(() => {
@@ -26,7 +27,9 @@ describe("Event Command", () => {
       "mergeMeta"
     ]);
     logger = jasmine.createSpyObj("logger", ["warn"]);
-
+    lifecycle = jasmine.createSpyObj("lifecycle", {
+      onUserXdmProvided: Promise.resolve()
+    });
     eventManager = {
       createEvent() {
         return event;
@@ -40,6 +43,7 @@ describe("Event Command", () => {
     };
 
     const dataCollector = createDataCollector({
+      lifecycle,
       eventManager,
       logger
     });
@@ -61,6 +65,9 @@ describe("Event Command", () => {
       expect(event.documentMayUnload).toHaveBeenCalled();
       expect(event.setUserXdm).toHaveBeenCalledWith(xdm);
       expect(event.setUserData).toHaveBeenCalledWith(data);
+
+      // TODO: Ensure onUserXdmProvided is called first
+
       expect(eventManager.sendEvent).toHaveBeenCalledWith(event, {
         renderDecisions: true,
         decisionScopes: []
@@ -105,6 +112,8 @@ describe("Event Command", () => {
         type: "mytype"
       })
       .then(() => {
+        // TODO: Ensure this happens after onUserXdmProvided
+
         expect(event.mergeXdm).toHaveBeenCalledWith({
           eventType: "mytype"
         });
@@ -117,6 +126,8 @@ describe("Event Command", () => {
         mergeId: "mymergeid"
       })
       .then(() => {
+        // TODO: Ensure this happens after onUserXdmProvided
+
         expect(event.mergeXdm).toHaveBeenCalledWith({
           eventMergeId: "mymergeid"
         });
@@ -129,6 +140,8 @@ describe("Event Command", () => {
         datasetId: "mydatasetId"
       })
       .then(() => {
+        // TODO: Ensure this happens after onUserXdmProvided
+
         expect(event.mergeMeta).toHaveBeenCalledWith({
           collect: {
             datasetId: "mydatasetId"

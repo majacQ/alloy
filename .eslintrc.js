@@ -5,6 +5,9 @@ module.exports = {
     node: true,
     jasmine: true
   },
+  // This parser is only necessary to use syntax like optional chaining
+  // that eslint doesn't natively support, but babel does.
+  parser: "@babel/eslint-parser",
   plugins: ["ban", "prettier", "testcafe"],
   rules: {
     "ban/ban": [

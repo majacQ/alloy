@@ -33,6 +33,7 @@ import getEcidFromResponse from "./getEcidFromResponse";
 import createGetIdentity from "./getIdentity/createGetIdentity";
 import createIdentityRequest from "./getIdentity/createIdentityRequest";
 import createIdentityRequestPayload from "./getIdentity/createIdentityRequestPayload";
+import injectCleanseIdentityMap from "./injectCleanseIdentityMap";
 
 const createIdentity = ({
   config,
@@ -63,6 +64,7 @@ const createIdentity = ({
       areThirdPartyCookiesSupportedByDefault
     }
   );
+  const cleanseIdentityMap = injectCleanseIdentityMap({ logger });
   const addLegacyEcidToPayload = injectAddLegacyEcidToPayload({
     getLegacyEcid: legacyIdentity.getEcid,
     addEcidToPayload
@@ -86,6 +88,7 @@ const createIdentity = ({
     processIdSyncs
   });
   return createComponent({
+    cleanseIdentityMap,
     ensureSingleIdentity,
     addEcidQueryToPayload,
     setLegacyEcid: legacyIdentity.setEcid,

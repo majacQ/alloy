@@ -11,8 +11,23 @@ governing permissions and limitations under the License.
 */
 
 import validateUserEventOptions from "./validateUserEventOptions";
+import { clone } from "../../utils";
 
-const createDataCollector = ({ eventManager, logger }) => {
+const handleUserXdm = ({ lifecycle, xdm }) => {
+  if (!xdm) {
+    return Promise.resolve();
+  }
+
+  // Clone the XDM so it can be manipulated by other components
+  // without affecting the source object (the user may be relying on it
+  // not changing).
+  const clonedXdm = clone(xdm);
+  return lifecycle.onUserXdmProvided({ xdm: clonedXdm }).then(() => {
+    return clonedXdm;
+  });
+};
+
+const createDataCollector = ({ lifecycle, eventManager, logger }) => {
   return {
     commands: {
       sendEvent: {
@@ -37,32 +52,37 @@ const createDataCollector = ({ eventManager, logger }) => {
             event.documentMayUnload();
           }
 
-          event.setUserXdm(xdm);
           event.setUserData(data);
 
-          if (type) {
-            event.mergeXdm({
-              eventType: type
-            });
-          }
+          return handleUserXdm({ lifecycle, xdm }).then(updatedXdm => {
+            if (updatedXdm) {
+              event.setUserXdm(updatedXdm);
+            }
 
-          if (mergeId) {
-            event.mergeXdm({
-              eventMergeId: mergeId
-            });
-          }
+            if (type) {
+              event.mergeXdm({
+                eventType: type
+              });
+            }
 
-          if (datasetId) {
-            event.mergeMeta({
-              collect: {
-                datasetId
-              }
-            });
-          }
+            if (mergeId) {
+              event.mergeXdm({
+                eventMergeId: mergeId
+              });
+            }
 
-          return eventManager.sendEvent(event, {
-            renderDecisions,
-            decisionScopes
+            if (datasetId) {
+              event.mergeMeta({
+                collect: {
+                  datasetId
+                }
+              });
+            }
+
+            return eventManager.sendEvent(event, {
+              renderDecisions,
+              decisionScopes
+            });
           });
         }
       }

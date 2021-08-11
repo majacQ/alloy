@@ -22,6 +22,7 @@ describe("createLifecycle", () => {
     const lifecycle = createLifecycle(componentRegistry);
     [
       "onComponentsRegistered",
+      "onUserXdmProvided",
       "onBeforeEvent",
       "onBeforeRequest",
       "onResponse",

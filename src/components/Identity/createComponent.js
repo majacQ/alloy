@@ -2,6 +2,7 @@ import { assign } from "../../utils";
 import getIdentityOptionsValidator from "./getIdentity/getIdentityOptionsValidator";
 
 export default ({
+  cleanseIdentityMap,
   addEcidQueryToPayload,
   ensureSingleIdentity,
   setLegacyEcid,
@@ -14,6 +15,12 @@ export default ({
   let edge = {};
   return {
     lifecycle: {
+      onUserXdmProvided({ xdm }) {
+        const { identityMap } = xdm;
+        if (identityMap) {
+          xdm.identityMap = cleanseIdentityMap(identityMap);
+        }
+      },
       onBeforeRequest({ request, onResponse, onRequestFailure }) {
         // Querying the ECID on every request to be able to set the legacy cookie, and make it
         // available for the `getIdentity` command.

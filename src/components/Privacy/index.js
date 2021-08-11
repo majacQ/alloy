@@ -24,14 +24,17 @@ import createStoredConsent from "./createStoredConsent";
 import injectSendSetConsentRequest from "./injectSendSetConsentRequest";
 import parseConsentCookie from "./parseConsentCookie";
 import validateSetConsentOptions from "./validateSetConsentOptions";
+import injectExecuteSetConsentTask from "./injectExecuteSetConsentTask";
 
 const createPrivacy = ({
+  lifecycle,
   config,
   consent,
   sendEdgeNetworkRequest,
   createNamespacedStorage
 }) => {
   const { orgId, defaultConsent } = config;
+
   const storedConsent = createStoredConsent({
     parseConsentCookie,
     orgId,
@@ -42,6 +45,10 @@ const createPrivacy = ({
     createConsentRequestPayload,
     createConsentRequest,
     sendEdgeNetworkRequest
+  });
+  const executeSetConsentTask = injectExecuteSetConsentTask({
+    lifecycle,
+    sendSetConsentRequest
   });
   const storage = createNamespacedStorage(
     `${sanitizeOrgIdForCookieName(orgId)}.consentHashes.`
@@ -57,7 +64,7 @@ const createPrivacy = ({
     taskQueue,
     defaultConsent,
     consent,
-    sendSetConsentRequest,
+    executeSetConsentTask,
     validateSetConsentOptions,
     consentHashStore,
     doesIdentityCookieExist

@@ -33,7 +33,7 @@ describe("privacy:createComponent", () => {
   let taskQueue;
   let defaultConsent;
   let consent;
-  let sendSetConsentRequest;
+  let executeSetConsentTask;
   let validateSetConsentOptions;
   let consentHashStore;
   let consentHashes;
@@ -58,7 +58,7 @@ describe("privacy:createComponent", () => {
       "setConsent",
       "suspend"
     ]);
-    sendSetConsentRequest = jasmine.createSpy("sendSetConsentRequest");
+    executeSetConsentTask = jasmine.createSpy("executeSetConsentTask");
     validateSetConsentOptions = jasmine
       .createSpy("validateSetConsentOptions")
       .and.callFake(options => options);
@@ -80,7 +80,7 @@ describe("privacy:createComponent", () => {
       taskQueue,
       defaultConsent,
       consent,
-      sendSetConsentRequest,
+      executeSetConsentTask,
       validateSetConsentOptions,
       consentHashStore,
       doesIdentityCookieExist
@@ -101,7 +101,7 @@ describe("privacy:createComponent", () => {
 
   const mockSetConsent = () => {
     const deferred = defer();
-    sendSetConsentRequest.and.returnValue(deferred.promise);
+    executeSetConsentTask.and.returnValue(deferred.promise);
     return {
       respondWithIn() {
         setConsentCookieIn();
@@ -142,7 +142,7 @@ describe("privacy:createComponent", () => {
     expect(consent.suspend).toHaveBeenCalled();
     setConsentMock.respondWithIn();
     return flushPromiseChains().then(() => {
-      expect(sendSetConsentRequest).toHaveBeenCalledWith({
+      expect(executeSetConsentTask).toHaveBeenCalledWith({
         consentOptions: CONSENT_IN.consent,
         identityMap: { my: "map" }
       });
@@ -174,7 +174,7 @@ describe("privacy:createComponent", () => {
     component.commands.setConsent.run(CONSENT_IN);
     return flushPromiseChains()
       .then(() => {
-        expect(sendSetConsentRequest).toHaveBeenCalledWith({
+        expect(executeSetConsentTask).toHaveBeenCalledWith({
           consentOptions: CONSENT_IN.consent,
           identityMap: undefined
         });
@@ -197,7 +197,7 @@ describe("privacy:createComponent", () => {
     component.commands.setConsent.run(CONSENT_IN);
     return flushPromiseChains()
       .then(() => {
-        expect(sendSetConsentRequest).toHaveBeenCalledWith({
+        expect(executeSetConsentTask).toHaveBeenCalledWith({
           consentOptions: CONSENT_IN.consent,
           identityMap: undefined
         });
@@ -207,7 +207,7 @@ describe("privacy:createComponent", () => {
         return flushPromiseChains();
       })
       .then(() => {
-        expect(sendSetConsentRequest).toHaveBeenCalledWith({
+        expect(executeSetConsentTask).toHaveBeenCalledWith({
           consentOptions: CONSENT_OUT.consent,
           identityMap: undefined
         });

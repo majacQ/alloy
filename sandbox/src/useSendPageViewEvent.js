@@ -32,7 +32,23 @@ export default ({
     window[instanceName]("sendEvent", {
       renderDecisions: true,
       //decisionScopes: ["sandbox-personalization-page"],
-      xdm,
+      xdm: {
+        identityMap: {
+          EMAIL: [
+            {
+              id: undefined
+            }
+          ],
+          AAID: [
+            {
+              id: "abc"
+            },
+            {
+              id: ""
+            }
+          ]
+        }
+      },
       data
     }).then(res => {
       console.log(res);

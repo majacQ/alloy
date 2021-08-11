@@ -17,7 +17,7 @@ export default ({
   taskQueue,
   defaultConsent,
   consent,
-  sendSetConsentRequest,
+  executeSetConsentTask,
   validateSetConsentOptions,
   consentHashStore,
   doesIdentityCookieExist
@@ -59,13 +59,9 @@ export default ({
           const consentHashes = consentHashStore.lookup(consentOptions);
           return taskQueue
             .addTask(() => {
-              if (consentHashes.isNew()) {
-                return sendSetConsentRequest({
-                  consentOptions,
-                  identityMap
-                });
-              }
-              return Promise.resolve();
+              return consentHashes.isNew()
+                ? executeSetConsentTask({ consentOptions, identityMap })
+                : Promise.resolve();
             })
             .then(() => consentHashes.save())
             .finally(readCookieIfQueueEmpty);

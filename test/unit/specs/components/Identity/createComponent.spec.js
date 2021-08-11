@@ -15,8 +15,9 @@ import { defer } from "../../../../../src/utils";
 import flushPromiseChains from "../../../helpers/flushPromiseChains";
 
 describe("Identity::createComponent", () => {
-  let ensureSingleIdentity;
+  let cleanseIdentityMap;
   let addEcidQueryToPayload;
+  let ensureSingleIdentity;
   let setLegacyEcid;
   let handleResponseForIdSyncs;
   let getEcidFromResponse;
@@ -28,8 +29,9 @@ describe("Identity::createComponent", () => {
   let response;
 
   beforeEach(() => {
-    ensureSingleIdentity = jasmine.createSpy("ensureSingleIdentity");
+    cleanseIdentityMap = jasmine.createSpy("cleanseIdentityMap");
     addEcidQueryToPayload = jasmine.createSpy("addEcidQueryToPayload");
+    ensureSingleIdentity = jasmine.createSpy("ensureSingleIdentity");
     setLegacyEcid = jasmine.createSpy("setLegacyEcid");
     handleResponseForIdSyncs = jasmine.createSpy("handleResponseForIdSyncs");
     getEcidFromResponse = jasmine.createSpy("getEcidFromResponse");
@@ -42,8 +44,9 @@ describe("Identity::createComponent", () => {
       .createSpy("getIdentity")
       .and.returnValue(getIdentityDeferred.promise);
     component = createComponent({
-      ensureSingleIdentity,
+      cleanseIdentityMap,
       addEcidQueryToPayload,
+      ensureSingleIdentity,
       setLegacyEcid,
       handleResponseForIdSyncs,
       getEcidFromResponse,
@@ -51,6 +54,23 @@ describe("Identity::createComponent", () => {
       consent
     });
     response = jasmine.createSpyObj("response", ["getEdge"]);
+  });
+
+  fit("cleanses user-provided identity map", () => {
+    const xdm = {
+      identityMap: {
+        EMAIL: [
+          {
+            id: "example@example.com"
+          }
+        ]
+      }
+    };
+    debugger;
+    component.lifecycle.onUserXdmProvided({
+      xdm
+    });
+    expect(cleanseIdentityMap).toHaveBeenCalledWith(xdm.identityMap);
   });
 
   it("adds ECID query to event", () => {

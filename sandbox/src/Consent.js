@@ -75,6 +75,7 @@ const mergeConsent = (...consentObjects) => {
 };
 
 const executeCommand = (command, options = {}) => () => {
+  debugger;
   window.alloy(command, options);
 };
 

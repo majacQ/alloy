@@ -14,6 +14,9 @@ governing permissions and limitations under the License.
 const hookNames = [
   // Called after all components have been registered.
   "onComponentsRegistered",
+  // Called when the user provides XDM. This allows components an opportunity
+  // to re-shape the XDM as necessary.
+  "onUserXdmProvided",
   // Called before an event is sent on a data collection request
   "onBeforeEvent",
   // Called before each request is made to the edge.
