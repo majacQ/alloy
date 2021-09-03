@@ -1,0 +1,2 @@
+(self.webpackChunkalloy_sandbox=self.webpackChunkalloy_sandbox||[]).push([[84],{9586:function(n,t,o){"use strict";o.r(t),o.d(t,{_frontmatter:function(){return m},default:function(){return d}});var e=o(2122),r=o(9756),u=(o(5007),o(4983)),a=o(3042),s=o(2524),c=["components"],m={},f={_frontmatter:m},p=a.Z;function d(n){var t=n.components,o=(0,r.Z)(n,c);return(0,u.mdx)(p,(0,e.Z)({},f,o,{components:t,mdxType:"MDXLayout"}),(0,u.mdx)(s.Z,{mdxType:"OrgTwo"}))}d.isMDXComponent=!0}}]);
+//# sourceMappingURL=component---src-pages-alloy-multipleorgs-index-md-89a9a889d26a0a94b369.js.map
