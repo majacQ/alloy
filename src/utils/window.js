@@ -11,5 +11,6 @@ governing permissions and limitations under the License.
 */
 
 // const w = globalThis.window;
+// eslint-disable-next-line no-restricted-globals
 const w = window;
 export default w;

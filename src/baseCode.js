@@ -14,4 +14,5 @@ governing permissions and limitations under the License.
 
 import baseCode from "./baseCode/index";
 
+// eslint-disable-next-line no-restricted-globals
 baseCode(window, ["alloy"]);
