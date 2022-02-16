@@ -8,15 +8,20 @@ export default ({
   requestHooks = [],
   includeAlloyLibrary = true,
   includeVisitorLibrary = false,
-  includeNpmLibrary = false
+  includeNpmLibrary = false,
+  additionalScriptOptions = {}
 }) => {
   const clientScripts = getFixtureClientScripts({
     includeAlloyLibrary,
     includeVisitorLibrary,
     includeNpmLibrary
   });
+  const clientScriptsWithOptions = clientScripts.map(clientScript => ({
+    ...additionalScriptOptions,
+    ...clientScript
+  }));
   return fixture(title)
     .page(url)
     .requestHooks(...requestHooks, destinationRequestMock)
-    .clientScripts(clientScripts);
+    .clientScripts(clientScriptsWithOptions);
 };

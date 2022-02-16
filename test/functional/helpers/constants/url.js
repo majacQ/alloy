@@ -10,10 +10,12 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-const baseUrl = `https://alloyio.com/functional-test`;
+const baseUrl = `https://josnyder.com:3000/functional-test`;
 
 export const TEST_PAGE = `${baseUrl}/testPage.html`;
 export const TEST_PAGE_WITH_CSP = `${baseUrl}/testPageWithCsp.html`;
 // This page is only used by reloadPage.js as an interim workaround for
 // https://github.com/DevExpress/testcafe/issues/5992
 export const RELOAD_PAGE = `${baseUrl}/reloadPage.html`;
+
+export const IFRAME_TEST_PAGE = `https://mysite.example:3001/functional-test/testIframePage.html`;
