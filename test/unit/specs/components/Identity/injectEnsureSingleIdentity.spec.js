@@ -10,9 +10,10 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import injectEnsureSingleIdentity from "../../../../../src/components/Identity/injectEnsureSingleIdentity";
-import { defer } from "../../../../../src/utils";
-import flushPromiseChains from "../../../helpers/flushPromiseChains";
+import { vi, beforeEach, describe, it, expect } from "vitest";
+import injectEnsureSingleIdentity from "../../../../../src/components/Identity/injectEnsureSingleIdentity.js";
+import { defer } from "../../../../../src/utils/index.js";
+import flushPromiseChains from "../../../helpers/flushPromiseChains.js";
 
 describe("Identity::injectEnsureSingleIdentity", () => {
   let doesIdentityCookieExist;
@@ -21,7 +22,6 @@ describe("Identity::injectEnsureSingleIdentity", () => {
   let awaitIdentityCookie;
   let logger;
   let ensureSingleIdentity;
-
   let sentIndex;
   let receivedIndex;
   let requests;
@@ -30,22 +30,23 @@ describe("Identity::injectEnsureSingleIdentity", () => {
   let onResponse;
   let onRequestFailure;
   let doesIdentityCookieExistBoolean;
-
   beforeEach(() => {
-    logger = jasmine.createSpyObj("logger", ["info"]);
-
+    logger = {
+      info: vi.fn(),
+    };
     sentIndex = 0;
     receivedIndex = 0;
     requests = [];
     requestSentStatusByIndex = [];
     awaitIdentityDeferreds = [];
     doesIdentityCookieExistBoolean = false;
-
-    setDomainForInitialIdentityPayload = request => {
+    setDomainForInitialIdentityPayload = (request) => {
       request.setUseIdThirdPartyDomain();
     };
-    addLegacyEcidToPayload = payload => {
-      payload.addIdentity("ECID", { id: "ABC123" });
+    addLegacyEcidToPayload = (payload) => {
+      payload.addIdentity("ECID", {
+        id: "ABC123",
+      });
       return Promise.resolve();
     };
     awaitIdentityCookie = () => {
@@ -55,39 +56,36 @@ describe("Identity::injectEnsureSingleIdentity", () => {
     };
     doesIdentityCookieExist = () => doesIdentityCookieExistBoolean;
   });
-
   const setup = () => {
     ensureSingleIdentity = injectEnsureSingleIdentity({
       doesIdentityCookieExist,
       setDomainForInitialIdentityPayload,
       addLegacyEcidToPayload,
       awaitIdentityCookie,
-      logger
+      logger,
     });
   };
-
   const sendRequest = () => {
-    const requestPayload = jasmine.createSpyObj("requestPayload", [
-      "addIdentity"
-    ]);
-    const request = jasmine.createSpyObj("request", {
-      getPayload: requestPayload,
-      setIsIdentityEstablished: undefined,
-      setUseIdThirdPartyDomain: undefined
-    });
+    const requestPayload = {
+      addIdentity: vi.fn(),
+    };
+    const request = {
+      getPayload: vi.fn().mockReturnValue(requestPayload),
+      setIsIdentityEstablished: vi.fn().mockReturnValue(undefined),
+      setUseIdThirdPartyDomain: vi.fn().mockReturnValue(undefined),
+    };
     requests.push(request);
-    onResponse = jasmine.createSpy("onResponse");
-    onRequestFailure = jasmine.createSpy("onRequestFailure");
+    onResponse = vi.fn();
+    onRequestFailure = vi.fn();
     const i = sentIndex;
     requestSentStatusByIndex.push(false);
     ensureSingleIdentity({
       request,
       onResponse,
-      onRequestFailure
+      onRequestFailure,
     }).then(() => {
       requestSentStatusByIndex[i] = true;
     });
-
     sentIndex += 1;
   };
   const simulateResponseWithIdentity = () => {
@@ -99,7 +97,6 @@ describe("Identity::injectEnsureSingleIdentity", () => {
     awaitIdentityDeferreds[receivedIndex].reject();
     receivedIndex += 1;
   };
-
   it("allows first request to proceed and pauses subsequent requests until identity cookie exists", () => {
     setup();
     return Promise.resolve()
@@ -131,7 +128,6 @@ describe("Identity::injectEnsureSingleIdentity", () => {
         expect(requestSentStatusByIndex[3]).toEqual(true);
       });
   });
-
   it("allows the second request to be called if the first doesn't set the cookie, but still holds up the third", () => {
     setup();
     return Promise.resolve()
@@ -164,7 +160,6 @@ describe("Identity::injectEnsureSingleIdentity", () => {
         expect(requests[3].getPayload().addIdentity).not.toHaveBeenCalled();
       });
   });
-
   it("logs messages", () => {
     setup();
     return Promise.resolve()
@@ -179,18 +174,17 @@ describe("Identity::injectEnsureSingleIdentity", () => {
       })
       .then(() => {
         expect(logger.info).toHaveBeenCalledWith(
-          "Delaying request while retrieving ECID from server."
+          "Delaying request while retrieving ECID from server.",
         );
         simulateResponseWithIdentity();
         return flushPromiseChains();
       })
       .then(() => {
         expect(logger.info).toHaveBeenCalledWith(
-          "Resuming previously delayed request."
+          "Resuming previously delayed request.",
         );
       });
   });
-
   it("sends a request without third-party domain or legacy ECID if we have an identity cookie", () => {
     doesIdentityCookieExistBoolean = true;
     setup();
@@ -205,14 +199,14 @@ describe("Identity::injectEnsureSingleIdentity", () => {
         expect(requests[0].getPayload().addIdentity).not.toHaveBeenCalled();
       });
   });
-
   it("calls awaitIdentityCookie with the correct parameters", () => {
-    awaitIdentityCookie = jasmine.createSpy("awaitIdentityCookie");
+    awaitIdentityCookie = vi.fn();
+    awaitIdentityCookie.mockReturnValue(Promise.resolve());
     setup();
     sendRequest();
     expect(awaitIdentityCookie).toHaveBeenCalledWith({
       onResponse,
-      onRequestFailure
+      onRequestFailure,
     });
   });
 });

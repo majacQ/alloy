@@ -1,16 +1,27 @@
+/*
+Copyright 2023 Adobe. All rights reserved.
+This file is licensed to you under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License. You may obtain a copy
+of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under
+the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+OF ANY KIND, either express or implied. See the License for the specific language
+governing permissions and limitations under the License.
+*/
 import { t, ClientFunction } from "testcafe";
-import createNetworkLogger from "../../helpers/networkLogger";
-import createFixture from "../../helpers/createFixture";
+import createNetworkLogger from "../../helpers/networkLogger/index.js";
+import createFixture from "../../helpers/createFixture/index.js";
 import {
   debugEnabled,
-  orgMainConfigMain
-} from "../../helpers/constants/configParts";
-import createAlloyProxy from "../../helpers/createAlloyProxy";
-import createConsoleLogger from "../../helpers/consoleLogger";
+  orgMainConfigMain,
+} from "../../helpers/constants/configParts/index.js";
+import createAlloyProxy from "../../helpers/createAlloyProxy.js";
+import createConsoleLogger from "../../helpers/consoleLogger/index.js";
 
 const networkLogger = createNetworkLogger();
 
-const onBeforeEventSend = ClientFunction(content => {
+const onBeforeEventSend = ClientFunction((content) => {
   window.onBeforeEventSendCalled = true;
   content.xdm.foo = "bar";
 });
@@ -32,20 +43,20 @@ const getOnBeforeEventSendCalled = ClientFunction(() => {
 createFixture({
   title:
     "C1715149 sendEvent should call onBeforeEventSend callback and send when expected",
-  requestHooks: [networkLogger.edgeInteractEndpointLogs]
+  requestHooks: [networkLogger.edgeInteractEndpointLogs],
 });
 
 test.meta({
   ID: "C1715149",
   SEVERITY: "P0",
-  TEST_RUN: "Regression"
+  TEST_RUN: "Regression",
 });
 
 test("C1715149 Events should call onBeforeEventSend callback and still send event", async () => {
   const alloy = createAlloyProxy();
   await alloy.configure({
     ...orgMainConfigMain,
-    onBeforeEventSend
+    onBeforeEventSend,
   });
   await alloy.sendEvent();
 
@@ -60,7 +71,7 @@ test("C1715149 Events should call onBeforeEventSend callback, fail, and not send
   const alloy = createAlloyProxy();
   await alloy.configure({
     ...orgMainConfigMain,
-    onBeforeEventSend: onBeforeEventSendFailed
+    onBeforeEventSend: onBeforeEventSendFailed,
   });
   const errorMessage = await alloy.sendEventErrorMessage();
 
@@ -75,7 +86,7 @@ test("C1715149 Events should call onBeforeEventSend callback, return false, and 
   await alloy.configure({
     ...orgMainConfigMain,
     ...debugEnabled,
-    onBeforeEventSend: onBeforeEventSendFalse
+    onBeforeEventSend: onBeforeEventSendFalse,
   });
 
   const result = await alloy.sendEvent();

@@ -10,24 +10,23 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import injectHandleResponseForIdSyncs from "../../../../../src/components/Identity/injectHandleResponseForIdSyncs";
+import { vi, describe, it, expect } from "vitest";
+import injectHandleResponseForIdSyncs from "../../../../../src/components/Identity/injectHandleResponseForIdSyncs.js";
 
 describe("Identity::injectHandleResponseForIdSyncs", () => {
   it("processes ID syncs", () => {
     const processIdSyncsPromise = Promise.resolve();
-    const processIdSyncs = jasmine
-      .createSpy("processIdSyncs")
-      .and.returnValue(processIdSyncsPromise);
+    const processIdSyncs = vi.fn().mockReturnValue(processIdSyncsPromise);
     const idSyncPayloads = [
       {
-        type: "idSync"
-      }
+        type: "idSync",
+      },
     ];
-    const response = jasmine.createSpyObj("response", {
-      getPayloadsByType: idSyncPayloads
-    });
+    const response = {
+      getPayloadsByType: vi.fn().mockReturnValue(idSyncPayloads),
+    };
     const handleResponseForIdSyncs = injectHandleResponseForIdSyncs({
-      processIdSyncs
+      processIdSyncs,
     });
     const result = handleResponseForIdSyncs(response);
     expect(processIdSyncs).toHaveBeenCalledWith(idSyncPayloads);

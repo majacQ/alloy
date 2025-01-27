@@ -10,43 +10,69 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import { arrayOf, string } from "../../../../../src/utils/validation";
-import describeValidation from "../../../helpers/describeValidation";
+import { describe } from "vitest";
+import { arrayOf, string } from "../../../../../src/utils/validation/index.js";
+import describeValidation from "../../../helpers/describeValidation.js";
 
 describe("validation::arrayOf", () => {
   describeValidation(
     "optional array with required values",
     arrayOf(string().required()),
     [
-      { value: ["foo", undefined], error: true },
-      { value: [true, "bar"], error: true },
-      { value: "non-array", error: true },
-      { value: ["foo"] },
-      { value: ["foo", "bar"] },
-      { value: [] },
-      { value: null },
-      { value: undefined }
-    ]
+      {
+        value: ["foo", undefined],
+        error: true,
+      },
+      {
+        value: [true, "bar"],
+        error: true,
+      },
+      {
+        value: "non-array",
+        error: true,
+      },
+      {
+        value: ["foo"],
+      },
+      {
+        value: ["foo", "bar"],
+      },
+      {
+        value: [],
+      },
+      {
+        value: null,
+      },
+      {
+        value: undefined,
+      },
+    ],
   );
-
   describeValidation(
     "optional array with optional values",
     arrayOf(string().default("hello")),
     [
       {
         value: ["a", null, undefined, "b"],
-        expected: ["a", "hello", "hello", "b"]
-      }
-    ]
+        expected: ["a", "hello", "hello", "b"],
+      },
+    ],
   );
-
   describeValidation(
     "required array with optional values",
     arrayOf(string()).required(),
     [
-      { value: [null] },
-      { value: null, error: true },
-      { value: undefined, error: true }
-    ]
+      {
+        value: [null],
+      },
+      {
+        value: null,
+        error: true,
+      },
+      {
+        value: undefined,
+        error: true,
+      },
+    ],
   );
 });

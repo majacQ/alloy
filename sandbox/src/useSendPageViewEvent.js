@@ -12,11 +12,15 @@ governing permissions and limitations under the License.
 
 import { useEffect } from "react";
 
+const isNonEmptyArray = (value) => Array.isArray(value) && value.length > 0;
+
 export default ({
   instanceName = "alloy",
   viewName,
   data = {},
-  xdm = {}
+  xdm = {},
+  decisionScopes,
+  setPropositions,
 } = {}) => {
   useEffect(() => {
     xdm.eventType = "page-view";
@@ -24,18 +28,28 @@ export default ({
     if (viewName) {
       xdm.web = {
         webPageDetails: {
-          viewName
-        }
+          viewName,
+        },
       };
     }
 
     window[instanceName]("sendEvent", {
       renderDecisions: true,
-      //decisionScopes: ["sandbox-personalization-page"],
+      decisionScopes, // Note: this option will soon be deprecated, please use personalization.decisionScopes instead
       xdm,
-      data
-    }).then(res => {
-      console.log(res);
+      data,
+    }).then((res) => {
+      const { propositions } = res;
+      if (setPropositions && isNonEmptyArray(propositions)) {
+        setPropositions(propositions);
+      }
     });
-  }, [instanceName, viewName]);
+  }, [
+    JSON.stringify(data),
+    decisionScopes,
+    instanceName,
+    setPropositions,
+    viewName,
+    JSON.stringify(xdm),
+  ]);
 };

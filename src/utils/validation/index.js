@@ -10,39 +10,108 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-// See comments on chain and nullSafeChain to understand what is going on here.
-import chain from "./chain";
-import nullSafeChain from "./nullSafeChain";
+/**
+ * Validators are functions of two parameters (value and path) that return the
+ * computed value if the input is valid, or throw an exception if the input is
+ * invalid. In most cases the returned value is the same as the input value;
+ * however, reference createDefaultValidator.js to see an example where the
+ * computed value is different from the input. Additionally, if we ever wanted
+ * to coerce types (i.e. parse string values into integers) as part of the
+ * validation process we could use the computed value to accomplish that.
+ *
+ * The path parameter is used to generate informative error messages. It is
+ * created by the objectOf, and arrayOf validators so that any error message can
+ * describe which key within the object or array is invalid.
+ *
+ * The validators also have methods to chain additional validation logic. For
+ * example, when you call `string()` to start a validator chain, it returns a
+ * validator function but it also has methods like `required` and `nonEmpty`.
+ * Here you can see that these methods are actually calling `chain`.
+ * Specifically in this function, the leftValidator is called first and then the
+ * return value of that is sent to the rightValidator. For example, when calling
+ * `string().nonEmpty().required()` the following chain is built up:
+ * ```
+ *              *
+ *            /   \
+ *          *     required
+ *        /   \
+ *      *     nonEmpty
+ *    /   \
+ * base   string
+ * ```
+ * Where every * is a call to chain where the two are combined. The individual
+ * validators are called from left to right in the above tree. The base
+ * validator is simply the identity function `value => value`, representing an
+ * optional value.
+ *
+ * After combining the validators, the new validator function is then augmented
+ * with the methods from the leftValidator and from the additionalMethods
+ * parameter. For example, when the string() function is called it chains to the
+ * base validator, but also adds additional methods like (`regexp`, `domain`,
+ * `nonEmpty`, and `unique`). When `nonEmpty` is called, which calls chain
+ * again, the additional methods are carried forward because they are already
+ * defined on the leftValidator.
+ *
+ * The base validator also contains the two methods `required` and `default`, so
+ * these can be used anywhere after any of the exposed validator functions are
+ * called.
+ *
+ * For most validators, we want the validation to be optional (i.e. allow null
+ * or undefined values). To accomplish this, the validator needs to have a check
+ * at the begining of the function, short circuiting the validation logic and
+ * returning value if value is null or undefined. `default` and `required` do
+ * not want this null check though. Indeed, `default` should return the default
+ * value if value is null, and `required` should throw an error if value is
+ * null.
+ *
+ * So to keep from having to have a null check in front of most validators,
+ * nullSafeChain allows you to chain a validator in a null-safe way.
+ */
 
-import booleanValidator from "./booleanValidator";
-import callbackValidator from "./callbackValidator";
-import createArrayOfValidator from "./createArrayOfValidator";
-import createDefaultValidator from "./createDefaultValidator";
-import createLiteralValidator from "./createLiteralValidator";
-import createMapOfValuesValidator from "./createMapOfValuesValidator";
-import createMinimumValidator from "./createMinimumValidator";
-import createNoUnknownFieldsValidator from "./createNoUnknownFieldsValidator";
-import createNonEmptyValidator from "./createNonEmptyValidator";
-import createObjectOfValidator from "./createObjectOfValidator";
-import createAnyOfValidator from "./createAnyOfValidator";
-import createUniqueValidator from "./createUniqueValidator";
-import domainValidator from "./domainValidator";
-import integerValidator from "./integerValidator";
-import numberValidator from "./numberValidator";
-import regexpValidator from "./regexpValidator";
-import requiredValidator from "./requiredValidator";
-import stringValidator from "./stringValidator";
+import {
+  chain,
+  nullSafeChain,
+  reverseNullSafeChainJoinErrors,
+} from "./utils.js";
+
+import booleanValidator from "./booleanValidator.js";
+import callbackValidator from "./callbackValidator.js";
+import createAnyOfValidator from "./createAnyOfValidator.js";
+import createArrayOfValidator from "./createArrayOfValidator.js";
+import createDefaultValidator from "./createDefaultValidator.js";
+import createDeprecatedValidator from "./createDeprecatedValidator.js";
+import createLiteralValidator from "./createLiteralValidator.js";
+import createMapOfValuesValidator from "./createMapOfValuesValidator.js";
+import createMinimumValidator from "./createMinimumValidator.js";
+import createMaximumValidator from "./createMaximumValidator.js";
+import createNoUnknownFieldsValidator from "./createNoUnknownFieldsValidator.js";
+import createNonEmptyValidator from "./createNonEmptyValidator.js";
+import createObjectOfValidator from "./createObjectOfValidator.js";
+import createRenamedValidator from "./createRenamedValidator.js";
+import createUniqueValidator from "./createUniqueValidator.js";
+import createUniqueItemsValidator from "./createUniqueItemsValidator.js";
+import domainValidator from "./domainValidator.js";
+import integerValidator from "./integerValidator.js";
+import numberValidator from "./numberValidator.js";
+import regexpValidator from "./regexpValidator.js";
+import requiredValidator from "./requiredValidator.js";
+import stringValidator from "./stringValidator.js";
+import matchesRegexpValidator from "./matchesRegexpValidator.js";
 
 // The base validator does no validation and just returns the value unchanged
-const base = value => value;
+const base = (value) => value;
 
-// The 'default' and 'required' methods are available after any data-type method
-// Don't use the nullSafeChain because they need to handle the null or undefined case
+// The 'default', 'required', and 'deprecated' methods are available after any
+// data-type method. Don't use the nullSafeChain on 'default' or 'required'
+// because they need to handle the null or undefined case
 base.default = function _default(defaultValue) {
   return chain(this, createDefaultValidator(defaultValue));
 };
 base.required = function required() {
   return chain(this, requiredValidator);
+};
+base.deprecated = function deprecated(message) {
+  return chain(this, createDeprecatedValidator(message));
 };
 
 // helper validators
@@ -54,6 +123,9 @@ const minimumInteger = function minimumInteger(minValue) {
 };
 const minimumNumber = function minimumNumber(minValue) {
   return nullSafeChain(this, createMinimumValidator("a number", minValue));
+};
+const maximumNumber = function maximumNumber(maxValue) {
+  return nullSafeChain(this, createMaximumValidator("a number", maxValue));
 };
 const integer = function integer() {
   return nullSafeChain(this, integerValidator, { minimum: minimumInteger });
@@ -70,8 +142,14 @@ const nonEmptyObject = function nonEmptyObject() {
 const regexp = function regexp() {
   return nullSafeChain(this, regexpValidator);
 };
+const matches = function matches(regexpPattern) {
+  return nullSafeChain(this, matchesRegexpValidator(regexpPattern));
+};
 const unique = function createUnique() {
   return nullSafeChain(this, createUniqueValidator());
+};
+const uniqueItems = function createUniqueItems() {
+  return nullSafeChain(this, createUniqueItemsValidator());
 };
 
 // top-level validators.  These are the first functions that are called to create a validator.
@@ -81,11 +159,12 @@ const anyOf = function anyOf(validators, message) {
   return chain(this, createAnyOfValidator(validators, message));
 };
 const anything = function anything() {
-  return nullSafeChain(this, base);
+  return this;
 };
 const arrayOf = function arrayOf(elementValidator) {
   return nullSafeChain(this, createArrayOfValidator(elementValidator), {
-    nonEmpty: nonEmptyArray
+    nonEmpty: nonEmptyArray,
+    uniqueItems,
   });
 };
 const boolean = function boolean() {
@@ -100,30 +179,54 @@ const literal = function literal(literalValue) {
 const number = function number() {
   return nullSafeChain(this, numberValidator, {
     minimum: minimumNumber,
+    maximum: maximumNumber,
     integer,
-    unique
+    unique,
   });
 };
 const mapOfValues = function mapOfValues(valuesValidator) {
   return nullSafeChain(this, createMapOfValuesValidator(valuesValidator), {
-    nonEmpty: nonEmptyObject
+    nonEmpty: nonEmptyObject,
   });
 };
-const objectOf = function objectOf(schema) {
-  const noUnknownFields = function noUnknownFields() {
+const createObjectOfAdditionalProperties = (schema) => ({
+  noUnknownFields: function noUnknownFields() {
     return nullSafeChain(this, createNoUnknownFieldsValidator(schema));
-  };
-  return nullSafeChain(this, createObjectOfValidator(schema), {
-    noUnknownFields,
-    nonEmpty: nonEmptyObject
-  });
+  },
+  nonEmpty: nonEmptyObject,
+  concat: function concat(otherObjectOfValidator) {
+    // combine the schema so that noUnknownFields, and concat have the combined schema
+    const newSchema = { ...schema, ...otherObjectOfValidator.schema };
+    return nullSafeChain(
+      this,
+      otherObjectOfValidator,
+      createObjectOfAdditionalProperties(newSchema),
+    );
+  },
+  renamed: function renamed(oldField, oldSchema, newField) {
+    // Run the deprecated validator first so that the deprecated field is removed
+    // before the objectOf validator runs.
+    return reverseNullSafeChainJoinErrors(
+      this,
+      createRenamedValidator(oldField, oldSchema, newField),
+    );
+  },
+  schema,
+});
+const objectOf = function objectOf(schema) {
+  return nullSafeChain(
+    this,
+    createObjectOfValidator(schema),
+    createObjectOfAdditionalProperties(schema),
+  );
 };
 const string = function string() {
   return nullSafeChain(this, stringValidator, {
     regexp,
     domain,
     nonEmpty: nonEmptyString,
-    unique
+    unique,
+    matches,
   });
 };
 
@@ -142,7 +245,7 @@ const boundString = string.bind(base);
 const boundEnumOf = function boundEnumOf(...values) {
   return boundAnyOf(
     values.map(boundLiteral),
-    `one of these values: [${JSON.stringify(values)}]`
+    `one of these values: ${JSON.stringify(values)}`,
   );
 };
 
@@ -157,5 +260,5 @@ export {
   boundMapOfValues as mapOfValues,
   boundObjectOf as objectOf,
   boundString as string,
-  boundEnumOf as enumOf
+  boundEnumOf as enumOf,
 };

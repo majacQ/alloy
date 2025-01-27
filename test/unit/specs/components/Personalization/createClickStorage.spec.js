@@ -1,17 +1,30 @@
-import createClickStorage from "../../../../../src/components/Personalization/createClickStorage";
+/*
+Copyright 2024 Adobe. All rights reserved.
+This file is licensed to you under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License. You may obtain a copy
+of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under
+the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+OF ANY KIND, either express or implied. See the License for the specific language
+governing permissions and limitations under the License.
+*/
+import { beforeEach, describe, it, expect } from "vitest";
+import createClickStorage from "../../../../../src/components/Personalization/createClickStorage.js";
 
 describe("Personalization::createClickStorage", () => {
   let clickStorage;
-
   const FIRST_CLICK = {
     selector: "div:123:h2",
     meta: {
       id: "AT:123",
       scope: "__view__",
       scopeDetails: {
-        test: "blah1"
-      }
-    }
+        test: "blah1",
+      },
+      trackingLabel: "mylabel",
+      scopeType: "myscopetype",
+    },
   };
   const SECOND_CLICK = {
     selector: "div:123:h2",
@@ -19,9 +32,9 @@ describe("Personalization::createClickStorage", () => {
       id: "AT:123",
       scope: "consent",
       scopeDetails: {
-        test: "blah3"
-      }
-    }
+        test: "blah3",
+      },
+    },
   };
   const THIRD_CLICK = {
     selector: "div:123:h2",
@@ -29,9 +42,9 @@ describe("Personalization::createClickStorage", () => {
       id: "AT:234",
       scope: "consent",
       scopeDetails: {
-        test: "blah4"
-      }
-    }
+        test: "blah4",
+      },
+    },
   };
   const FORTH_CLICK = {
     selector: "div:123:h1",
@@ -39,9 +52,9 @@ describe("Personalization::createClickStorage", () => {
       id: "AT:123",
       scope: "consent",
       scopeDetails: {
-        test: "blah5"
-      }
-    }
+        test: "blah5",
+      },
+    },
   };
 
   /*  this is how the clickStorage map should look like
@@ -72,37 +85,33 @@ describe("Personalization::createClickStorage", () => {
   beforeEach(() => {
     clickStorage = createClickStorage();
   });
-
   it("returns empty array if empty storage", () => {
     expect(clickStorage.getClickSelectors()).toEqual([]);
   });
-
   it("returns empty object when no metadata for this selector", () => {
-    expect(clickStorage.getClickMetasBySelector("123")).toEqual({});
+    expect(clickStorage.getClickMetas("123")).toEqual({});
   });
-
   it("stores clicks as a map in the click storage and returns the selectors and metadata", () => {
-    clickStorage.storeClickMetrics(FIRST_CLICK);
-    clickStorage.storeClickMetrics(SECOND_CLICK);
-    clickStorage.storeClickMetrics(THIRD_CLICK);
-    clickStorage.storeClickMetrics(FORTH_CLICK);
-
+    clickStorage.storeClickMeta(FIRST_CLICK);
+    clickStorage.storeClickMeta(SECOND_CLICK);
+    clickStorage.storeClickMeta(THIRD_CLICK);
+    clickStorage.storeClickMeta(FORTH_CLICK);
     expect(clickStorage.getClickSelectors().length).toEqual(2);
-    expect(clickStorage.getClickMetasBySelector("div:123:h2").length).toEqual(
-      2
-    );
+    expect(clickStorage.getClickMetas("div:123:h2").length).toEqual(2);
   });
-  it("getClickMetasBySelector returns the id, scopeDetails, scope", () => {
-    clickStorage.storeClickMetrics(FIRST_CLICK);
-
-    const meta = clickStorage.getClickMetasBySelector("div:123:h2");
-
+  it("getClickMetas returns the id, scopeDetails, scope, trackingLabel, and scopeType", () => {
+    clickStorage.storeClickMeta(FIRST_CLICK);
+    const meta = clickStorage.getClickMetas("div:123:h2");
     expect(clickStorage.getClickSelectors().length).toEqual(1);
     expect(meta.length).toEqual(1);
     expect(meta[0]).toEqual({
       id: "AT:123",
       scope: "__view__",
-      scopeDetails: { test: "blah1" }
+      scopeDetails: {
+        test: "blah1",
+      },
+      trackingLabel: "mylabel",
+      scopeType: "myscopetype",
     });
   });
 });

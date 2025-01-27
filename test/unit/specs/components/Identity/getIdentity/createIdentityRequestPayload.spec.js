@@ -10,36 +10,40 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import createIdentityPayload from "../../../../../../src/components/Identity/getIdentity/createIdentityRequestPayload";
-import describeRequestPayload from "../../../../helpers/describeRequestPayload";
+import { describe, it, expect } from "vitest";
+import createIdentityPayload from "../../../../../../src/components/Identity/getIdentity/createIdentityRequestPayload.js";
+import describeRequestPayload from "../../../../helpers/describeRequestPayload.js";
 
 describe("createIdentityRequestPayload", () => {
   describeRequestPayload(() => {
     return createIdentityPayload(["NS1", "NS2", "NS3"]);
   });
-
   it("adds identities", () => {
     const payload = createIdentityPayload(["NS1", "NS2", "NS3"]);
     payload.addIdentity("IDNS", {
-      id: "ABC123"
+      id: "ABC123",
     });
     payload.addIdentity("IDNS", {
-      id: "DEF456"
+      id: "DEF456",
     });
     expect(payload.toJSON()).toEqual({
       xdm: {
         identityMap: {
           IDNS: [
             {
-              id: "ABC123"
+              id: "ABC123",
             },
             {
-              id: "DEF456"
-            }
-          ]
-        }
+              id: "DEF456",
+            },
+          ],
+        },
       },
-      query: { identity: { fetch: ["NS1", "NS2", "NS3"] } }
+      query: {
+        identity: {
+          fetch: ["NS1", "NS2", "NS3"],
+        },
+      },
     });
   });
 });

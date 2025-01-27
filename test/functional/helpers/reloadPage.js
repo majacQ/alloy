@@ -11,7 +11,7 @@ governing permissions and limitations under the License.
 */
 
 import { t, ClientFunction } from "testcafe";
-import { RELOAD_PAGE as RELOAD_PAGE_URL } from "./constants/url";
+import { RELOAD_PAGE as RELOAD_PAGE_URL } from "./constants/url.js";
 
 const getLocalStorageEntries = ClientFunction(() => {
   const entries = Object.keys(window.localStorage)
@@ -19,7 +19,7 @@ const getLocalStorageEntries = ClientFunction(() => {
     // Object.keys() returns not just the entry names, but also some methods,
     // so we have to filter down to only those keys that are actual
     // storage entries.
-    .filter(key => localStorage.getItem(key) !== null)
+    .filter((key) => localStorage.getItem(key) !== null)
     .reduce((memo, entryName) => {
       memo[entryName] = localStorage[entryName];
       return memo;
@@ -27,18 +27,17 @@ const getLocalStorageEntries = ClientFunction(() => {
   return entries;
 });
 
-const setLocalStorageEntries = ClientFunction(entries => {
-  Object.keys(entries).forEach(entryName => {
+const setLocalStorageEntries = ClientFunction((entries) => {
+  Object.keys(entries).forEach((entryName) => {
     localStorage.setItem(entryName, entries[entryName]);
   });
 });
 
-const getCurrentUrl = ClientFunction(() => {
-  return document.location.href;
-});
+const getCurrentUrl = ClientFunction(() => document.location.href);
 
-export default async () => {
-  const currentUrl = await getCurrentUrl();
+export default async (newQueryString = "") => {
+  const currentUrl = new URL(await getCurrentUrl());
+  currentUrl.search = newQueryString;
   // navigateTo waits for the server to respond after a redirect occurs,
   // which is why we use it instead of just calling document.location.reload()
   // in our client function.
@@ -52,6 +51,6 @@ export default async () => {
   const localStorageEntries = await getLocalStorageEntries();
   // We could navigate to any other page and then back again.
   await t.navigateTo(RELOAD_PAGE_URL);
-  await t.navigateTo(currentUrl);
+  await t.navigateTo(currentUrl.toString());
   await setLocalStorageEntries(localStorageEntries);
 };

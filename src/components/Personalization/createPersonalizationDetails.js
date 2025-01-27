@@ -10,62 +10,126 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import { includes } from "../../utils";
-import PAGE_WIDE_SCOPE from "./constants/scope";
+import { isNonEmptyString, isNonEmptyArray } from "../../utils/index.js";
+import { buildPageSurface, normalizeSurfaces } from "./utils/surfaceUtils.js";
+import PAGE_WIDE_SCOPE from "../../constants/pageWideScope.js";
 import {
   DEFAULT_CONTENT_ITEM,
   DOM_ACTION,
   HTML_CONTENT_ITEM,
+  MESSAGE_IN_APP,
   JSON_CONTENT_ITEM,
-  REDIRECT_ITEM
-} from "./constants/schema";
-import isNonEmptyString from "../../utils/isNonEmptyString";
+  REDIRECT_ITEM,
+  RULESET_ITEM,
+  MESSAGE_CONTENT_CARD,
+} from "../../constants/schema.js";
 
-export default ({ renderDecisions, decisionScopes, event, viewCache }) => {
+const addPageWideScope = (scopes) => {
+  if (!scopes.includes(PAGE_WIDE_SCOPE)) {
+    scopes.push(PAGE_WIDE_SCOPE);
+  }
+};
+
+const addPageSurface = (surfaces, getPageLocation) => {
+  const pageSurface = buildPageSurface(getPageLocation);
+  if (!surfaces.includes(pageSurface)) {
+    surfaces.push(pageSurface);
+  }
+};
+
+const dedupe = (array) =>
+  array.filter((item, pos) => array.indexOf(item) === pos);
+
+export default ({
+  getPageLocation,
+  renderDecisions,
+  decisionScopes,
+  personalization,
+  event,
+  isCacheInitialized,
+  logger,
+}) => {
   const viewName = event.getViewName();
   return {
     isRenderDecisions() {
       return renderDecisions;
     },
+    isSendDisplayEvent() {
+      return !!personalization.sendDisplayEvent;
+    },
+    shouldIncludeRenderedPropositions() {
+      return !!personalization.includeRenderedPropositions;
+    },
     getViewName() {
       return viewName;
     },
     hasScopes() {
-      return decisionScopes.length > 0;
+      return (
+        decisionScopes.length > 0 ||
+        isNonEmptyArray(personalization.decisionScopes)
+      );
+    },
+    hasSurfaces() {
+      return isNonEmptyArray(personalization.surfaces);
     },
     hasViewName() {
       return isNonEmptyString(viewName);
     },
     createQueryDetails() {
       const scopes = [...decisionScopes];
-      if (!this.isCacheInitialized() && !includes(scopes, PAGE_WIDE_SCOPE)) {
-        scopes.push(PAGE_WIDE_SCOPE);
+      if (isNonEmptyArray(personalization.decisionScopes)) {
+        scopes.push(...personalization.decisionScopes);
+      }
+      const eventSurfaces = normalizeSurfaces(
+        personalization.surfaces,
+        getPageLocation,
+        logger,
+      );
+
+      if (this.shouldRequestDefaultPersonalization()) {
+        addPageWideScope(scopes);
+        addPageSurface(eventSurfaces, getPageLocation);
       }
 
       const schemas = [
         DEFAULT_CONTENT_ITEM,
         HTML_CONTENT_ITEM,
         JSON_CONTENT_ITEM,
-        REDIRECT_ITEM
+        REDIRECT_ITEM,
+        RULESET_ITEM,
+        MESSAGE_IN_APP,
+        MESSAGE_CONTENT_CARD,
       ];
 
-      if (includes(scopes, PAGE_WIDE_SCOPE)) {
+      if (scopes.includes(PAGE_WIDE_SCOPE)) {
         schemas.push(DOM_ACTION);
       }
 
       return {
         schemas,
-        decisionScopes: scopes
+        decisionScopes: dedupe(scopes),
+        surfaces: dedupe(eventSurfaces),
       };
     },
     isCacheInitialized() {
-      return viewCache.isInitialized();
+      return isCacheInitialized;
     },
     shouldFetchData() {
-      return this.hasScopes() || !this.isCacheInitialized();
+      return (
+        this.hasScopes() ||
+        this.hasSurfaces() ||
+        this.shouldRequestDefaultPersonalization()
+      );
     },
     shouldUseCachedData() {
-      return this.hasViewName() && this.isCacheInitialized();
-    }
+      return this.hasViewName() && !this.shouldFetchData();
+    },
+    shouldRequestDefaultPersonalization() {
+      return (
+        personalization.defaultPersonalizationEnabled ||
+        (!this.isCacheInitialized() &&
+          personalization.defaultPersonalizationEnabled !== false)
+      );
+    },
   };
 };

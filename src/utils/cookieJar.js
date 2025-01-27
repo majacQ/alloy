@@ -10,6 +10,12 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import cookie from "@adobe/reactor-cookie";
+import cookie from "js-cookie";
 
-export default cookie;
+
+export default {
+  get: cookie.get.bind(cookie),
+  set: cookie.set.bind(cookie),
+  remove: cookie.remove.bind(cookie),
+  withConverter: cookie.withConverter.bind(cookie)
+};

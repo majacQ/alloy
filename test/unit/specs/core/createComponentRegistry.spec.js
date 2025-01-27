@@ -10,11 +10,13 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import createComponentRegistry from "../../../../src/core/createComponentRegistry";
+import { vi, describe, it, expect } from "vitest";
+import createComponentRegistry from "../../../../src/core/createComponentRegistry.js";
 
-const commandErrorRegex = /\[CompOne\] An error occurred while executing the perform command./;
-const lifecycleErrorRegex = /\[CompOne\] An error occurred while executing the onBeforeEvent lifecycle hook./;
-
+const commandErrorRegex =
+  /\[CompOne\] An error occurred while executing the perform command./;
+const lifecycleErrorRegex =
+  /\[CompOne\] An error occurred while executing the onBeforeEvent lifecycle hook./;
 describe("createComponentRegistry", () => {
   describe("register", () => {
     it("should not register components with existing commands", () => {
@@ -24,29 +26,28 @@ describe("createComponentRegistry", () => {
           commands: {
             command1() {},
             command2() {},
-            command3() {}
-          }
+            command3() {},
+          },
         });
         registry.register("CompTwo", {
           commands: {
             command2() {},
             command3() {},
-            command4() {}
-          }
+            command4() {},
+          },
         });
       }).toThrowError(
-        "[ComponentRegistry] Could not register CompTwo because it has existing command(s): command2,command3"
+        "[ComponentRegistry] Could not register CompTwo because it has existing command(s): command2,command3",
       );
     });
   });
-
   describe("getCommand", () => {
     it("handles a command that returns a non-promise", () => {
       const registry = createComponentRegistry();
       const component = {
         commands: {
-          perform: jasmine.createSpy().and.returnValue("nonPromiseValue")
-        }
+          perform: vi.fn().mockReturnValue("nonPromiseValue"),
+        },
       };
       registry.register("CompOne", component);
       const command = registry.getCommand("perform");
@@ -54,34 +55,34 @@ describe("createComponentRegistry", () => {
       expect(component.commands.perform).toHaveBeenCalledWith("arg1", "arg2");
       expect(result).toBe("nonPromiseValue");
     });
-
     it("handles a command that returns a promise that gets resolved", () => {
       const registry = createComponentRegistry();
       const component = {
         commands: {
-          perform: jasmine
-            .createSpy()
-            .and.returnValue(Promise.resolve("resolvedPromiseValue"))
-        }
+          perform: vi
+            .fn()
+            .mockReturnValue(Promise.resolve("resolvedPromiseValue")),
+        },
       };
       registry.register("CompOne", component);
       const command = registry.getCommand("perform");
       const result = command("arg1", "arg2");
       expect(component.commands.perform).toHaveBeenCalledWith("arg1", "arg2");
-      return result.then(value => {
+      return result.then((value) => {
         expect(value).toBe("resolvedPromiseValue");
       });
     });
-
     it("handles a command that throws an error", () => {
       const registry = createComponentRegistry();
-      const runSpy = jasmine.createSpy().and.throwError("thrownError");
+      const runSpy = vi.fn().mockImplementation(() => {
+        throw new Error("thrownError");
+      });
       const component = {
         commands: {
           perform: {
-            run: runSpy
-          }
-        }
+            run: runSpy,
+          },
+        },
       };
       registry.register("CompOne", component);
       const command = registry.getCommand("perform");
@@ -90,81 +91,73 @@ describe("createComponentRegistry", () => {
       }).toThrowError(commandErrorRegex);
       expect(runSpy).toHaveBeenCalledWith("arg1", "arg2");
     });
-
-    it("handles a command that returns a promise that gets rejected", () => {
+    it("handles a command that returns a promise that gets rejected", async () => {
       const registry = createComponentRegistry();
-      const runSpy = jasmine
-        .createSpy()
-        .and.returnValue(Promise.reject(new Error("rejectedPromiseError")));
+      const runSpy = vi
+        .fn()
+        .mockReturnValue(Promise.reject(new Error("rejectedPromiseError")));
       const component = {
         commands: {
           perform: {
-            run: runSpy
-          }
-        }
+            run: runSpy,
+          },
+        },
       };
       registry.register("CompOne", component);
       const command = registry.getCommand("perform");
       const result = command.run("arg1", "arg2");
       expect(runSpy).toHaveBeenCalledWith("arg1", "arg2");
-      return result.then(fail).catch(error => {
-        expect(error).toEqual(jasmine.any(Error));
-        expect(error.message).toMatch(commandErrorRegex);
-      });
+      await expect(result).rejects.toThrow(commandErrorRegex);
     });
-
     it("should return undefined if command does not exist", () => {
       const registry = createComponentRegistry();
       const command = registry.getCommand("bogus");
       expect(command).toBeUndefined();
     });
   });
-
   describe("getLifecycleCallbacks", () => {
     it("handles a callback that returns a non-promise", () => {
       const registry = createComponentRegistry();
       const component = {
         lifecycle: {
-          onBeforeEvent: jasmine.createSpy().and.returnValue("nonPromiseValue")
-        }
+          onBeforeEvent: vi.fn().mockReturnValue("nonPromiseValue"),
+        },
       };
       registry.register("CompOne", component);
       const callback = registry.getLifecycleCallbacks("onBeforeEvent")[0];
       const result = callback("arg1", "arg2");
       expect(component.lifecycle.onBeforeEvent).toHaveBeenCalledWith(
         "arg1",
-        "arg2"
+        "arg2",
       );
       expect(result).toBe("nonPromiseValue");
     });
-
-    it("handles a callback that returns a promise that gets resolved", () => {
+    it("handles a callback that returns a promise that gets resolved", async () => {
       const registry = createComponentRegistry();
       const component = {
         lifecycle: {
-          onBeforeEvent: jasmine
-            .createSpy()
-            .and.returnValue(Promise.resolve("resolvedPromiseValue"))
-        }
+          onBeforeEvent: vi
+            .fn()
+            .mockReturnValue(Promise.resolve("resolvedPromiseValue")),
+        },
       };
       registry.register("CompOne", component);
       const callback = registry.getLifecycleCallbacks("onBeforeEvent")[0];
       const result = callback("arg1", "arg2");
       expect(component.lifecycle.onBeforeEvent).toHaveBeenCalledWith(
         "arg1",
-        "arg2"
+        "arg2",
       );
-      return result.then(value => {
-        expect(value).toBe("resolvedPromiseValue");
-      });
+      await expect(result).resolves.toBe("resolvedPromiseValue");
     });
-
     it("handles a callback that throws an error", () => {
       const registry = createComponentRegistry();
       const component = {
         lifecycle: {
-          onBeforeEvent: jasmine.createSpy().and.throwError("thrownError")
-        }
+          onBeforeEvent: vi.fn().mockImplementation(() => {
+            throw new Error("thrownError");
+          }),
+        },
       };
       registry.register("CompOne", component);
       const callback = registry.getLifecycleCallbacks("onBeforeEvent")[0];
@@ -173,43 +166,38 @@ describe("createComponentRegistry", () => {
       }).toThrowError(lifecycleErrorRegex);
       expect(component.lifecycle.onBeforeEvent).toHaveBeenCalledWith(
         "arg1",
-        "arg2"
+        "arg2",
       );
     });
-
-    it("handles a callback that returns a promise that gets rejected", () => {
+    it("handles a callback that returns a promise that gets rejected", async () => {
       const registry = createComponentRegistry();
       const component = {
         lifecycle: {
-          onBeforeEvent: jasmine
-            .createSpy()
-            .and.returnValue(Promise.reject(new Error("rejectedPromiseError")))
-        }
+          onBeforeEvent: vi
+            .fn()
+            .mockReturnValue(Promise.reject(new Error("rejectedPromiseError"))),
+        },
       };
       registry.register("CompOne", component);
       const callback = registry.getLifecycleCallbacks("onBeforeEvent")[0];
       const result = callback("arg1", "arg2");
       expect(component.lifecycle.onBeforeEvent).toHaveBeenCalledWith(
         "arg1",
-        "arg2"
+        "arg2",
       );
-      return result.then(fail).catch(error => {
-        expect(error).toEqual(jasmine.any(Error));
-        expect(error.message).toMatch(lifecycleErrorRegex);
-      });
+      await expect(result).rejects.toThrow(lifecycleErrorRegex);
     });
-
     it("should return all registered lifecycle callbacks", () => {
       const registry = createComponentRegistry();
       registry.register("CompOne", {
         lifecycle: {
-          onBeforeEvent() {}
-        }
+          onBeforeEvent() {},
+        },
       });
       registry.register("CompTwo", {
         lifecycle: {
-          onBeforeEvent() {}
-        }
+          onBeforeEvent() {},
+        },
       });
       const callbacks = registry.getLifecycleCallbacks("onBeforeEvent");
       expect(callbacks.length).toBe(2);

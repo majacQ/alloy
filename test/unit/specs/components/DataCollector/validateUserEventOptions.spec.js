@@ -9,7 +9,8 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import validateUserEventOptions from "../../../../../src/components/DataCollector/validateUserEventOptions";
+import { describe, it, expect } from "vitest";
+import validateUserEventOptions from "../../../../../src/components/DataCollector/validateUserEventOptions.js";
 
 describe("DataCollector::validateUserEventOptions", () => {
   it("throws error for invalid options", () => {
@@ -17,24 +18,27 @@ describe("DataCollector::validateUserEventOptions", () => {
       {
         xdm: {
           eventType: "test",
-          identityMap: "123"
-        }
+          identityMap: "123",
+        },
       },
       {
         xdm: {
           eventType: "test",
           identityMap: {
-            namespace1: { id: "123", primary: true }
-          }
-        }
+            namespace1: {
+              id: "123",
+              primary: true,
+            },
+          },
+        },
       },
       {
         xdm: {
           eventType: "test",
           identityMap: {
-            namespace1: {}
-          }
-        }
+            namespace1: {},
+          },
+        },
       },
       {
         xdm: {
@@ -44,15 +48,20 @@ describe("DataCollector::validateUserEventOptions", () => {
               {
                 id: "123",
                 primary: true,
-                authenticatedState: "loggedIn"
-              }
-            ]
-          }
-        }
-      }
-    ].forEach(options => {
+                authenticatedState: "loggedIn",
+              },
+            ],
+          },
+        },
+      },
+      {
+        decisionScopes: ["item1", "item1"],
+      },
+    ].forEach((options) => {
       expect(() => {
-        validateUserEventOptions({ options });
+        validateUserEventOptions({
+          options,
+        });
       }).toThrowError();
     });
   });

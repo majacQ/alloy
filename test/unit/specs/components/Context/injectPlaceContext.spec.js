@@ -10,27 +10,66 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import injectPlaceContext from "../../../../../src/components/Context/injectPlaceContext";
+import { vi, describe, it, expect } from "vitest";
+import injectPlaceContext from "../../../../../src/components/Context/injectPlaceContext.js";
 
 describe("Context::injectPlaceContext", () => {
-  let dateProvider;
-  const date = new Date("March 25, 2019 21:56:18");
-
-  beforeEach(() => {
-    dateProvider = () => {
-      return date;
-    };
-  });
-
   it("adds placeContext", () => {
-    spyOn(date, "getTimezoneOffset").and.returnValue(7 * 60);
+    const date = new Date("March 25, 2019 21:56:18");
+    vi.spyOn(date, "getTimezoneOffset").mockReturnValue(7 * 60);
     const xdm = {};
-    injectPlaceContext(dateProvider)(xdm);
+    injectPlaceContext(() => date)(xdm);
     expect(xdm).toEqual({
       placeContext: {
         localTime: "2019-03-25T21:56:18.000-07:00",
-        localTimezoneOffset: 7 * 60
-      }
+        localTimezoneOffset: 7 * 60,
+      },
+    });
+  });
+  it("handles string values from timezoneOffset", () => {
+    const date = new Date("May 19, 2022 13:43:42");
+    vi.spyOn(date, "getTimezoneOffset").mockReturnValue("55.1");
+    const xdm = {};
+    injectPlaceContext(() => date)(xdm);
+    expect(xdm).toEqual({
+      placeContext: {
+        localTime: "2022-05-19T13:43:42.000-00:55",
+        localTimezoneOffset: 55,
+      },
+    });
+  });
+  it("handles NaN timezoneOffsets", () => {
+    const date = new Date("May 19, 2022 13:43:42");
+    vi.spyOn(date, "getTimezoneOffset").mockReturnValue("foo");
+    const xdm = {};
+    injectPlaceContext(() => date)(xdm);
+    expect(xdm).toEqual({
+      placeContext: {
+        localTime: "2022-05-19T13:43:42.000+00:00",
+      },
+    });
+  });
+  it("handles large timezoneOffsets 1", () => {
+    const date = new Date("October 28, 2022 11:57:42");
+    vi.spyOn(date, "getTimezoneOffset").mockReturnValue(-5999);
+    const xdm = {};
+    injectPlaceContext(() => date)(xdm);
+    expect(xdm).toEqual({
+      placeContext: {
+        localTime: "2022-10-28T11:57:42.000+99:59",
+        localTimezoneOffset: -5999,
+      },
+    });
+  });
+  it("handles large timezoneOffsets 2", () => {
+    const date = new Date("October 28, 2022 11:57:42");
+    vi.spyOn(date, "getTimezoneOffset").mockReturnValue(-6000);
+    const xdm = {};
+    injectPlaceContext(() => date)(xdm);
+    expect(xdm).toEqual({
+      placeContext: {
+        localTimezoneOffset: -6000,
+      },
     });
   });
 });

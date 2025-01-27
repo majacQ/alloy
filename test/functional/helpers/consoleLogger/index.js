@@ -1,12 +1,22 @@
+/*
+Copyright 2023 Adobe. All rights reserved.
+This file is licensed to you under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License. You may obtain a copy
+of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under
+the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+OF ANY KIND, either express or implied. See the License for the specific language
+governing permissions and limitations under the License.
+*/
 import { t } from "testcafe";
 
 const logLevels = ["log", "info", "warn", "error"];
 
-const containsMessageMatchingRegex = (messages, messageRegex) => {
-  return messages.find(message => messageRegex.test(message)) !== undefined;
-};
+const containsMessageMatchingRegex = (messages, messageRegex) =>
+  messages.find((message) => messageRegex.test(message)) !== undefined;
 
-const formatFoundMessages = messages => {
+const formatFoundMessages = (messages) => {
   if (!messages.length) {
     return "No messages found.";
   }
@@ -44,7 +54,7 @@ const formatFoundMessages = messages => {
  */
 const createConsoleLogger = async () => {
   let cursorByLogLevel;
-  const updateCursorByLogLevel = messages => {
+  const updateCursorByLogLevel = (messages) => {
     cursorByLogLevel = logLevels.reduce((memo, logLevel) => {
       memo[logLevel] = messages[logLevel].length;
       return memo;
@@ -54,10 +64,32 @@ const createConsoleLogger = async () => {
   const messagesWhenCreated = await t.getBrowserConsoleMessages();
   updateCursorByLogLevel(messagesWhenCreated);
 
-  const getMessagesSinceReset = async logLevel => {
+  // testCafe just calls toString on each parameter to the console log, so when
+  // logging objects, it just shows [object Object]. So this JSON stringifys the
+  // args and logs that.
+  await t.eval(
+    () => {
+      logLevels.forEach((logLevel) => {
+        const original = window.console[logLevel];
+        window.console[logLevel] = (...args) => original(JSON.stringify(args));
+      });
+    },
+    { dependencies: { logLevels } },
+  );
+
+  const getMessagesSinceReset = async (logLevel) => {
     const consoleMessages = await t.getBrowserConsoleMessages();
     const messagesForLevel = consoleMessages[logLevel];
-    return messagesForLevel.slice(cursorByLogLevel[logLevel]);
+    return messagesForLevel
+      .slice(cursorByLogLevel[logLevel])
+      .map((message) => JSON.parse(message));
+  };
+
+  const getMessagesSinceResetAsStrings = async (logLevel) => {
+    const messages = await getMessagesSinceReset(logLevel);
+    return messages.map((message) =>
+      message.map((part) => part?.toString()).join(" "),
+    );
   };
 
   const reset = async () => {
@@ -66,33 +98,33 @@ const createConsoleLogger = async () => {
   };
 
   const expectMessageMatching = async (logLevel, messageRegex) => {
-    const messages = await getMessagesSinceReset(logLevel);
+    const messages = await getMessagesSinceResetAsStrings(logLevel);
     await t
       .expect(containsMessageMatchingRegex(messages, messageRegex))
       .ok(
         `No message was found at "${logLevel}" log level matching ${messageRegex}. ${formatFoundMessages(
-          messages
-        )}`
+          messages,
+        )}`,
       );
   };
 
   const expectNoMessageMatching = async (logLevel, messageRegex) => {
-    const messages = await getMessagesSinceReset(logLevel);
+    const messages = await getMessagesSinceResetAsStrings(logLevel);
     await t
       .expect(containsMessageMatchingRegex(messages, messageRegex))
       .notOk(
-        `A message was found at "${logLevel}" log level matching ${messageRegex} when none was expected.`
+        `A message was found at "${logLevel}" log level matching ${messageRegex} when none was expected.`,
       );
   };
 
-  const expectNoMessages = async logLevel => {
-    const messages = await getMessagesSinceReset(logLevel);
+  const expectNoMessages = async (logLevel) => {
+    const messages = await getMessagesSinceResetAsStrings(logLevel);
     await t
       .expect(messages.length)
       .notOk(
         `Messages were found "${logLevel}" at log level when none were expected. ${formatFoundMessages(
-          messages
-        )}`
+          messages,
+        )}`,
       );
   };
 
@@ -101,14 +133,14 @@ const createConsoleLogger = async () => {
       expectMessageMatching: expectMessageMatching.bind(null, logLevel),
       expectNoMessageMatching: expectNoMessageMatching.bind(null, logLevel),
       expectNoMessages: expectNoMessages.bind(null, logLevel),
-      getMessagesSinceReset: getMessagesSinceReset.bind(null, logLevel)
+      getMessagesSinceReset: getMessagesSinceReset.bind(null, logLevel),
     };
     return memo;
   }, {});
 
   return {
     reset,
-    ...methodsByLogLevel
+    ...methodsByLogLevel,
   };
 };
 

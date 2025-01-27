@@ -11,88 +11,131 @@ governing permissions and limitations under the License.
 */
 
 import {
-  fireReferrerHideableImage,
-  areThirdPartyCookiesSupportedByDefault,
-  injectDoesIdentityCookieExist
-} from "../../utils";
-import injectProcessIdSyncs from "./injectProcessIdSyncs";
-import configValidators from "./configValidators";
+  injectAreThirdPartyCookiesSupportedByDefault,
+  injectDoesIdentityCookieExist,
+  createLoggingCookieJar,
+  cookieJar,
+} from "../../utils/index.js";
+import injectProcessIdSyncs from "./injectProcessIdSyncs.js";
+import configValidators from "./configValidators.js";
 
-import createComponent from "./createComponent";
-import createLegacyIdentity from "./createLegacyIdentity";
-import awaitVisitorOptIn from "./visitorService/awaitVisitorOptIn";
-import injectGetEcidFromVisitor from "./visitorService/injectGetEcidFromVisitor";
-import injectHandleResponseForIdSyncs from "./injectHandleResponseForIdSyncs";
-import injectEnsureSingleIdentity from "./injectEnsureSingleIdentity";
-import addEcidQueryToPayload from "./addEcidQueryToPayload";
-import injectSetDomainForInitialIdentityPayload from "./injectSetDomainForInitialIdentityPayload";
-import injectAddLegacyEcidToPayload from "./injectAddLegacyEcidToPayload";
-import addEcidToPayload from "./addEcidToPayload";
-import injectAwaitIdentityCookie from "./injectAwaitIdentityCookie";
-import getEcidFromResponse from "./getEcidFromResponse";
-import createGetIdentity from "./getIdentity/createGetIdentity";
-import createIdentityRequest from "./getIdentity/createIdentityRequest";
-import createIdentityRequestPayload from "./getIdentity/createIdentityRequestPayload";
+import createComponent from "./createComponent.js";
+import createLegacyIdentity from "./createLegacyIdentity.js";
+import awaitVisitorOptIn from "./visitorService/awaitVisitorOptIn.js";
+import injectGetEcidFromVisitor from "./visitorService/injectGetEcidFromVisitor.js";
+import injectHandleResponseForIdSyncs from "./injectHandleResponseForIdSyncs.js";
+import injectEnsureSingleIdentity from "./injectEnsureSingleIdentity.js";
+import injectAddEcidQueryToPayload from "./injectAddEcidQueryToPayload.js";
+import injectSetDomainForInitialIdentityPayload from "./injectSetDomainForInitialIdentityPayload.js";
+import injectAddLegacyEcidToPayload from "./injectAddLegacyEcidToPayload.js";
+import injectAddQueryStringIdentityToPayload from "./injectAddQueryStringIdentityToPayload.js";
+import addEcidToPayload from "./addEcidToPayload.js";
+import injectAwaitIdentityCookie from "./injectAwaitIdentityCookie.js";
+import getNamespacesFromResponse from "./getNamespacesFromResponse.js";
+import createGetIdentity from "./getIdentity/createGetIdentity.js";
+import createIdentityRequest from "./getIdentity/createIdentityRequest.js";
+import createIdentityRequestPayload from "./getIdentity/createIdentityRequestPayload.js";
+import injectAppendIdentityToUrl from "./appendIdentityToUrl/injectAppendIdentityToUrl.js";
+import createGetIdentityOptionsValidator from "./getIdentity/createGetIdentityOptionsValidator.js";
 
 const createIdentity = ({
   config,
   logger,
   consent,
-  sendEdgeNetworkRequest
+  fireReferrerHideableImage,
+  sendEdgeNetworkRequest,
+  apexDomain,
+  getBrowser,
 }) => {
-  const { orgId, thirdPartyCookiesEnabled } = config;
+  const {
+    orgId,
+    thirdPartyCookiesEnabled,
+    edgeConfigOverrides: globalConfigOverrides,
+  } = config;
 
   const getEcidFromVisitor = injectGetEcidFromVisitor({
     logger,
     orgId,
-    awaitVisitorOptIn
+    awaitVisitorOptIn,
   });
+  const loggingCookieJar = createLoggingCookieJar({ logger, cookieJar });
   const legacyIdentity = createLegacyIdentity({
     config,
-    getEcidFromVisitor
+    getEcidFromVisitor,
+    apexDomain,
+    cookieJar: loggingCookieJar,
+    isPageSsl: window.location.protocol === "https:",
   });
   const doesIdentityCookieExist = injectDoesIdentityCookieExist({ orgId });
   const getIdentity = createGetIdentity({
     sendEdgeNetworkRequest,
     createIdentityRequestPayload,
-    createIdentityRequest
+    createIdentityRequest,
+    globalConfigOverrides,
   });
-  const setDomainForInitialIdentityPayload = injectSetDomainForInitialIdentityPayload(
-    {
+  const areThirdPartyCookiesSupportedByDefault =
+    injectAreThirdPartyCookiesSupportedByDefault({ getBrowser });
+  const setDomainForInitialIdentityPayload =
+    injectSetDomainForInitialIdentityPayload({
       thirdPartyCookiesEnabled,
-      areThirdPartyCookiesSupportedByDefault
-    }
-  );
+      areThirdPartyCookiesSupportedByDefault,
+    });
   const addLegacyEcidToPayload = injectAddLegacyEcidToPayload({
     getLegacyEcid: legacyIdentity.getEcid,
-    addEcidToPayload
+    addEcidToPayload,
   });
+  const addQueryStringIdentityToPayload = injectAddQueryStringIdentityToPayload(
+    {
+      locationSearch: window.document.location.search,
+      dateProvider: () => new Date(),
+      orgId,
+      logger,
+    },
+  );
   const awaitIdentityCookie = injectAwaitIdentityCookie({
+    doesIdentityCookieExist,
     orgId,
-    doesIdentityCookieExist
+    logger,
   });
   const ensureSingleIdentity = injectEnsureSingleIdentity({
     doesIdentityCookieExist,
     setDomainForInitialIdentityPayload,
     addLegacyEcidToPayload,
     awaitIdentityCookie,
-    logger
+    logger,
   });
   const processIdSyncs = injectProcessIdSyncs({
     fireReferrerHideableImage,
-    logger
+    logger,
   });
   const handleResponseForIdSyncs = injectHandleResponseForIdSyncs({
-    processIdSyncs
+    processIdSyncs,
+  });
+  const appendIdentityToUrl = injectAppendIdentityToUrl({
+    dateProvider: () => new Date(),
+    orgId,
+    globalConfigOverrides,
+  });
+  const getIdentityOptionsValidator = createGetIdentityOptionsValidator({
+    thirdPartyCookiesEnabled,
+  });
+  const addEcidQueryToPayload = injectAddEcidQueryToPayload({
+    thirdPartyCookiesEnabled,
+    areThirdPartyCookiesSupportedByDefault,
   });
   return createComponent({
-    ensureSingleIdentity,
     addEcidQueryToPayload,
+    addQueryStringIdentityToPayload,
+    ensureSingleIdentity,
     setLegacyEcid: legacyIdentity.setEcid,
     handleResponseForIdSyncs,
-    getEcidFromResponse,
+    getNamespacesFromResponse,
     getIdentity,
-    consent
+    consent,
+    appendIdentityToUrl,
+    logger,
+    config,
+    getIdentityOptionsValidator,
   });
 };
 

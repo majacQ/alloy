@@ -10,29 +10,26 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import { isFunction, isObject, values } from "../utils";
-
-const coreCommands = {
-  CONFIGURE: "configure",
-  SET_DEBUG: "setDebug"
-};
+import { isFunction, isObject } from "../utils/index.js";
+import { CONFIGURE, SET_DEBUG } from "../constants/coreCommands.js";
+import { objectOf, boolean } from "../utils/validation/index.js";
 
 export default ({
   logger,
   configureCommand,
   setDebugCommand,
   handleError,
-  validateCommandOptions
+  validateCommandOptions,
 }) => {
   let configurePromise;
 
   const getExecutor = (commandName, options) => {
     let executor;
 
-    if (commandName === coreCommands.CONFIGURE) {
+    if (commandName === CONFIGURE) {
       if (configurePromise) {
         throw new Error(
-          "The library has already been configured and may only be configured once."
+          "The library has already been configured and may only be configured once.",
         );
       }
       executor = () => {
@@ -44,33 +41,44 @@ export default ({
     } else {
       if (!configurePromise) {
         throw new Error(
-          `The library must be configured first. Please do so by executing the configure command.`
+          `The library must be configured first. Please do so by executing the configure command.`,
         );
       }
-      if (commandName === coreCommands.SET_DEBUG) {
-        executor = () => setDebugCommand(options);
+      if (commandName === SET_DEBUG) {
+        executor = () => {
+          const optionsValidator = objectOf({
+            enabled: boolean().required(),
+          }).noUnknownFields();
+
+          const validatedOptions = validateCommandOptions({
+            command: { commandName: SET_DEBUG, optionsValidator },
+            options,
+          });
+
+          setDebugCommand(validatedOptions);
+        };
       } else {
         executor = () => {
           return configurePromise.then(
-            componentRegistry => {
+            (componentRegistry) => {
               const command = componentRegistry.getCommand(commandName);
               if (!command || !isFunction(command.run)) {
-                const commandNames = values(coreCommands)
+                const commandNames = [CONFIGURE, SET_DEBUG]
                   .concat(componentRegistry.getCommandNames())
                   .join(", ");
                 throw new Error(
-                  `The ${commandName} command does not exist. List of available commands: ${commandNames}.`
+                  `The ${commandName} command does not exist. List of available commands: ${commandNames}.`,
                 );
               }
               const validatedOptions = validateCommandOptions({
                 command,
-                options
+                options,
               });
               return command.run(validatedOptions);
             },
             () => {
               logger.warn(
-                `An error during configuration is preventing the ${commandName} command from executing.`
+                `An error during configuration is preventing the ${commandName} command from executing.`,
               );
               // If configuration failed, we prevent the configuration
               // error from bubbling here because we don't want the
@@ -80,7 +88,7 @@ export default ({
               // Instead, for this command, we'll just return a promise
               // that never gets resolved.
               return new Promise(() => {});
-            }
+            },
           );
         };
       }
@@ -90,21 +98,21 @@ export default ({
   };
 
   return (commandName, options = {}) => {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       // We have to wrap the getExecutor() call in the promise so the promise
       // will be rejected if getExecutor() throws errors.
       const executor = getExecutor(commandName, options);
       logger.logOnBeforeCommand({ commandName, options });
       resolve(executor());
     })
-      .catch(error => {
+      .catch((error) => {
         return handleError(error, `${commandName} command`);
       })
-      .catch(error => {
+      .catch((error) => {
         logger.logOnCommandRejected({ commandName, options, error });
         throw error;
       })
-      .then(rawResult => {
+      .then((rawResult) => {
         // We should always be returning an object from every command.
         const result = isObject(rawResult) ? rawResult : {};
         logger.logOnCommandResolved({ commandName, options, result });

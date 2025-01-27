@@ -10,23 +10,21 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import getFirstChild from "../../../../../../../src/components/Personalization/dom-actions/dom/getFirstChild";
-import createFragment from "../../../../../../../src/components/Personalization/dom-actions/dom/createFragment";
+import { describe, it, expect } from "vitest";
+import getFirstChild from "../../../../../../../src/components/Personalization/dom-actions/dom/getFirstChild.js";
+import createFragment from "../../../../../../../src/components/Personalization/dom-actions/dom/createFragment.js";
 
 describe("Personalization::helper::dom::getFirstChild", () => {
   it("returns the first child node of the element", () => {
     const element = createFragment(
-      `<h1>hello there</h1><div id="foo">foo</div>`
+      `<h1>hello there</h1><div id="foo">foo</div>`,
     );
     const result = getFirstChild(element);
-
     expect(result.tagName).toEqual("H1");
   });
-
   it("returns null if there are no child elements", () => {
     const element = createFragment();
     const result = getFirstChild(element);
-
     expect(result).toBeNull();
   });
 });

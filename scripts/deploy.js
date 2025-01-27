@@ -1,18 +1,33 @@
-#! /usr/bin/env node
+#!/usr/bin/env node
 
-const { execSync } = require("child_process");
-const urlExists = require("url-exists-nodejs");
+/*
+Copyright 2023 Adobe. All rights reserved.
+This file is licensed to you under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License. You may obtain a copy
+of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under
+the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+OF ANY KIND, either express or implied. See the License for the specific language
+governing permissions and limitations under the License.
+*/
+
+import { execSync } from "child_process";
+import { createRequire } from "module";
+import urlExists from "url-exists-nodejs";
+import createLogger from "./helpers/createLogger.js";
+import exec from "./helpers/exec.js";
+import publishTag from "./helpers/publishTag.js";
+import publishToNpm from "./helpers/publishToNpm.js";
+import publishVersionBranch from "./helpers/publishVersionBranch.js";
+import setupDeployment from "./helpers/setupDeployment.js";
+import updateDevDependency from "./helpers/updateDevDependency.js";
+import updatePackageVersion from "./helpers/updatePackageVersion.js";
+import uploadToCDN from "./helpers/uploadToCDN.js";
+import withErrorHandling from "./helpers/withErrorHandling.js";
+
+const require = createRequire(import.meta.url);
 const { version: currentVersion } = require("../package.json");
-
-const createLogger = require("./helpers/createLogger");
-const exec = require("./helpers/exec");
-const publishTag = require("./helpers/publishTag");
-const publishToNpm = require("./helpers/publishToNpm");
-const setupDeployment = require("./helpers/setupDeployment");
-const updateDevDependency = require("./helpers/updateDevDependency");
-const updatePackageVersion = require("./helpers/updatePackageVersion");
-const uploadToCDN = require("./helpers/uploadToCDN");
-const withErrorHandling = require("./helpers/withErrorHandling");
 
 const logger = createLogger(console, () => Date.now());
 
@@ -39,7 +54,7 @@ const container = {
   npmToken: process.env.NPM_TOKEN,
   process,
   urlExists,
-  version
+  version,
 };
 
 const run = async () => {
@@ -48,6 +63,7 @@ const run = async () => {
   await publishToNpm(container);
   await updateDevDependency(container);
   await publishTag(container);
+  await publishVersionBranch(container);
   await uploadToCDN(container);
 };
 

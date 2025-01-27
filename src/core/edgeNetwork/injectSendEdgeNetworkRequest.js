@@ -10,9 +10,16 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import { ID_THIRD_PARTY as ID_THIRD_PARTY_DOMAIN } from "../../constants/domain";
-import apiVersion from "../../constants/apiVersion";
-import { createCallbackAggregator, noop, assign } from "../../utils";
+import { ID_THIRD_PARTY as ID_THIRD_PARTY_DOMAIN } from "../../constants/domain.js";
+import apiVersion from "../../constants/apiVersion.js";
+import { createCallbackAggregator, noop } from "../../utils/index.js";
+import { isNetworkError } from "../../utils/networkErrors.js";
+import mergeLifecycleResponses from "./mergeLifecycleResponses.js";
+import handleRequestFailure from "./handleRequestFailure.js";
+
+const isDemdexBlockedError = (error, request) => {
+  return request.getUseIdThirdPartyDomain() && isNetworkError(error);
+};
 
 export default ({
   config,
@@ -20,9 +27,32 @@ export default ({
   cookieTransfer,
   sendNetworkRequest,
   createResponse,
-  processWarningsAndErrors
+  processWarningsAndErrors,
+  getLocationHint,
+  getAssuranceValidationTokenParams,
 }) => {
-  const { edgeDomain, edgeBasePath, edgeConfigId } = config;
+  const { edgeDomain, edgeBasePath, datastreamId } = config;
+  let hasDemdexFailed = false;
+
+  const buildEndpointUrl = (endpointDomain, request) => {
+    const locationHint = getLocationHint();
+    const edgeBasePathWithLocationHint = locationHint
+      ? `${edgeBasePath}/${locationHint}${request.getEdgeSubPath()}`
+      : `${edgeBasePath}${request.getEdgeSubPath()}`;
+    const configId = request.getDatastreamIdOverride() || datastreamId;
+
+    if (configId !== datastreamId) {
+      request.getPayload().mergeMeta({
+        sdkConfig: {
+          datastream: {
+            original: datastreamId,
+          },
+        },
+      });
+    }
+
+    return `https://${endpointDomain}/${edgeBasePathWithLocationHint}/${apiVersion}/${request.getAction()}?configId=${configId}&requestId=${request.getId()}${getAssuranceValidationTokenParams()}`;
+  };
 
   /**
    * Sends a network request that is aware of payload interfaces,
@@ -31,7 +61,7 @@ export default ({
   return ({
     request,
     runOnResponseCallbacks = noop,
-    runOnRequestFailureCallbacks = noop
+    runOnRequestFailureCallbacks = noop,
   }) => {
     const onResponseCallbackAggregator = createCallbackAggregator();
     onResponseCallbackAggregator.add(lifecycle.onResponse);
@@ -45,35 +75,45 @@ export default ({
       .onBeforeRequest({
         request,
         onResponse: onResponseCallbackAggregator.add,
-        onRequestFailure: onRequestFailureCallbackAggregator.add
+        onRequestFailure: onRequestFailureCallbackAggregator.add,
       })
       .then(() => {
-        const endpointDomain = request.getUseIdThirdPartyDomain()
-          ? ID_THIRD_PARTY_DOMAIN
-          : edgeDomain;
-        const url = `https://${endpointDomain}/${edgeBasePath}/${apiVersion}/${request.getAction()}?configId=${edgeConfigId}&requestId=${request.getId()}`;
-        cookieTransfer.cookiesToPayload(request.getPayload(), endpointDomain);
+        const endpointDomain =
+          hasDemdexFailed || !request.getUseIdThirdPartyDomain()
+            ? edgeDomain
+            : ID_THIRD_PARTY_DOMAIN;
+
+        const url = buildEndpointUrl(endpointDomain, request);
+        const payload = request.getPayload();
+        cookieTransfer.cookiesToPayload(payload, endpointDomain);
+
         return sendNetworkRequest({
           requestId: request.getId(),
           url,
-          payload: request.getPayload(),
-          useSendBeacon: request.getUseSendBeacon()
+          payload,
+          useSendBeacon: request.getUseSendBeacon(),
         });
       })
-      .then(networkResponse => {
+      .then((networkResponse) => {
         processWarningsAndErrors(networkResponse);
         return networkResponse;
       })
-      .catch(error => {
-        // Regardless of whether the network call failed, an unexpected status
-        // code was returned, or the response body was malformed, we want to call
-        // the onRequestFailure callbacks, but still throw the exception.
-        const throwError = () => {
-          throw error;
-        };
-        return onRequestFailureCallbackAggregator
-          .call({ error })
-          .then(throwError, throwError);
+      .catch((error) => {
+        if (isDemdexBlockedError(error, request)) {
+          hasDemdexFailed = true;
+          request.setUseIdThirdPartyDomain(false);
+          const url = buildEndpointUrl(edgeDomain, request);
+          const payload = request.getPayload();
+          cookieTransfer.cookiesToPayload(payload, edgeDomain);
+
+          return sendNetworkRequest({
+            requestId: request.getId(),
+            url,
+            payload,
+            useSendBeacon: request.getUseSendBeacon(),
+          });
+        }
+        return handleRequestFailure(onRequestFailureCallbackAggregator)(error);
       })
       .then(({ parsedBody, getHeader }) => {
         // Note that networkResponse.parsedBody may be undefined if it was a
@@ -87,21 +127,9 @@ export default ({
         // Konductor plugin, for example).
         return onResponseCallbackAggregator
           .call({
-            response
+            response,
           })
-          .then(returnValues => {
-            // Merges all returned objects from all `onResponse` callbacks into
-            // a single object that can later be returned to the customer.
-            const lifecycleOnResponseReturnValues = returnValues.shift() || [];
-            const consumerOnResponseReturnValues = returnValues.shift() || [];
-            const lifecycleOnBeforeRequestReturnValues = returnValues;
-            return assign(
-              {},
-              ...lifecycleOnResponseReturnValues,
-              ...consumerOnResponseReturnValues,
-              ...lifecycleOnBeforeRequestReturnValues
-            );
-          });
+          .then(mergeLifecycleResponses);
       });
   };
 };

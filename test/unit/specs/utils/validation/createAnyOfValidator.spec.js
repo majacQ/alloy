@@ -10,15 +10,16 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
+import { describe } from "vitest";
 import {
   anyOf,
   objectOf,
   boolean,
   arrayOf,
   string,
-  literal
-} from "../../../../../src/utils/validation";
-import describeValidation from "../../../helpers/describeValidation";
+  literal,
+} from "../../../../../src/utils/validation/index.js";
+import describeValidation from "../../../helpers/describeValidation.js";
 
 describe("validation:anyOf", () => {
   describeValidation(
@@ -27,33 +28,85 @@ describe("validation:anyOf", () => {
       [
         objectOf({
           renderDecisions: literal(true).required(),
-          decisionScopes: arrayOf(string())
+          decisionScopes: arrayOf(string()),
         }).required(),
         objectOf({
           renderDecisions: boolean(),
-          decisionScopes: arrayOf(string())
-            .nonEmpty()
-            .required()
-        }).required()
+          decisionScopes: arrayOf(string()).nonEmpty().required(),
+        }).required(),
       ],
-      "either renderDecisions set to true or decisionScopes set to a nonEmpty array"
+      "either renderDecisions set to true or decisionScopes set to a nonEmpty array",
     ),
     [
-      { value: undefined, error: true },
-      { value: null, error: true },
-      { value: {}, error: true },
-      { value: { renderDecisions: true }, error: false },
-      { value: { renderDecisions: false }, error: true },
-      { value: { renderDecisions: "foo" }, error: true },
-      { value: { decisionScopes: [] }, error: true },
-      { value: { decisionScopes: ["a"] }, error: false },
-      { value: { decisionScopes: "bar" }, error: true },
       {
-        value: { renderDecisions: true, decisionScopes: ["a", "b"] },
-        error: false
+        value: undefined,
+        error: true,
       },
-      { value: { renderDecisions: true, decisionScopes: "foo" }, error: true },
-      { value: { renderDecisions: "foo", decisionScopes: ["a"] }, error: true }
-    ]
+      {
+        value: null,
+        error: true,
+      },
+      {
+        value: {},
+        error: true,
+      },
+      {
+        value: {
+          renderDecisions: true,
+        },
+        error: false,
+      },
+      {
+        value: {
+          renderDecisions: false,
+        },
+        error: true,
+      },
+      {
+        value: {
+          renderDecisions: "foo",
+        },
+        error: true,
+      },
+      {
+        value: {
+          decisionScopes: [],
+        },
+        error: true,
+      },
+      {
+        value: {
+          decisionScopes: ["a"],
+        },
+        error: false,
+      },
+      {
+        value: {
+          decisionScopes: "bar",
+        },
+        error: true,
+      },
+      {
+        value: {
+          renderDecisions: true,
+          decisionScopes: ["a", "b"],
+        },
+        error: false,
+      },
+      {
+        value: {
+          renderDecisions: true,
+          decisionScopes: "foo",
+        },
+        error: true,
+      },
+      {
+        value: {
+          renderDecisions: "foo",
+          decisionScopes: ["a"],
+        },
+        error: true,
+      },
+    ],
   );
 });

@@ -10,41 +10,41 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import getVisitor from "./getVisitor";
+import getVisitor from "./getVisitor.js";
 
 export default ({ logger, orgId, awaitVisitorOptIn }) => {
-  const Visitor = getVisitor(window);
   return () => {
+    const Visitor = getVisitor(window);
     if (Visitor) {
       // Need to explicitly wait for optIn because visitor will call callback
       // with invalid values prior to optIn being approved
       return awaitVisitorOptIn({ logger })
         .then(() => {
           logger.info(
-            "Delaying request while using Visitor to retrieve ECID from server."
+            "Delaying request while using Visitor to retrieve ECID from server.",
           );
 
-          return new Promise(resolve => {
+          return new Promise((resolve) => {
             const visitor = Visitor.getInstance(orgId, {});
-            visitor.getMarketingCloudVisitorID(ecid => {
+            visitor.getMarketingCloudVisitorID((ecid) => {
               logger.info(
-                "Resuming previously delayed request that was waiting for ECID from Visitor."
+                "Resuming previously delayed request that was waiting for ECID from Visitor.",
               );
               resolve(ecid);
             }, true);
           });
         })
-        .catch(error => {
+        .catch((error) => {
           // If consent was denied, get the ECID from experience edge. OptIn and AEP Web SDK
           // consent should operate independently, but during id migration AEP Web SDK needs
           // to wait for optIn object consent resolution so that only one ECID is generated.
           if (error) {
             logger.info(
-              `${error.message}, retrieving ECID from experience edge`
+              `${error.message}, retrieving ECID from experience edge`,
             );
           } else {
             logger.info(
-              "An error occurred while obtaining the ECID from Visitor."
+              "An error occurred while obtaining the ECID from Visitor.",
             );
           }
         });

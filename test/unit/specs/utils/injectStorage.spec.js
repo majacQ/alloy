@@ -10,99 +10,100 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import injectStorage from "../../../../src/utils/injectStorage";
+import { vi, describe, it, expect } from "vitest";
+import injectStorage from "../../../../src/utils/injectStorage.js";
 
 describe("injectStorage", () => {
   [
     {
       storageProperty: "session",
-      windowProperty: "sessionStorage"
+      windowProperty: "sessionStorage",
     },
     {
       storageProperty: "persistent",
-      windowProperty: "localStorage"
-    }
+      windowProperty: "localStorage",
+    },
   ].forEach(({ storageProperty, windowProperty }) => {
     describe(storageProperty, () => {
       describe("setItem", () => {
         it("sets item", () => {
           const window = {
             [windowProperty]: {
-              setItem: jasmine.createSpy().and.returnValue(true)
-            }
+              setItem: vi.fn().mockReturnValue(true),
+            },
           };
           const storage = injectStorage(window)("example.");
           const result = storage[storageProperty].setItem("foo", "bar");
           expect(window[windowProperty].setItem).toHaveBeenCalledWith(
             "com.adobe.alloy.example.foo",
-            "bar"
+            "bar",
           );
-          expect(result).toBeTrue();
+          expect(result).toBe(true);
         });
-
         it("returns false if an error occurs setting item", () => {
           const window = {
             [windowProperty]: {
-              setItem: jasmine.createSpy().and.throwError()
-            }
+              setItem: vi.fn().mockImplementation(() => {
+                throw new Error();
+              }),
+            },
           };
           const storage = injectStorage(window)("example.");
           const result = storage[storageProperty].setItem("foo", "bar");
-          expect(result).toBeFalse();
+          expect(result).toBe(false);
         });
       });
-
       describe("getItem", () => {
         it("gets item", () => {
           const window = {
             [windowProperty]: {
-              getItem: jasmine.createSpy().and.returnValue("abc")
-            }
+              getItem: vi.fn().mockReturnValue("abc"),
+            },
           };
           const storage = injectStorage(window)("example.");
           const result = storage[storageProperty].getItem("foo");
           expect(window[windowProperty].getItem).toHaveBeenCalledWith(
-            "com.adobe.alloy.example.foo"
+            "com.adobe.alloy.example.foo",
           );
           expect(result).toBe("abc");
         });
-
         it("returns null if an error occurs while getting item", () => {
           const window = {
             [windowProperty]: {
-              getItem: jasmine.createSpy().and.throwError()
-            }
+              getItem: vi.fn().mockImplementation(() => {
+                throw new Error();
+              }),
+            },
           };
           const storage = injectStorage(window)("example.");
           const result = storage[storageProperty].getItem("foo");
           expect(result).toBeNull();
         });
       });
-
       describe("clear", () => {
         it("clears all with the namespace prefix", () => {
           const window = {
             [windowProperty]: {
-              removeItem: jasmine.createSpy(),
+              removeItem: vi.fn(),
               "com.adobe.alloy.example.a": "1",
               "com.adobe.alloy.example.b": "2",
               c: "3",
-              "com.adobe.alloy.d": "4"
-            }
+              "com.adobe.alloy.d": "4",
+            },
           };
           const storage = injectStorage(window)("example.");
           storage[storageProperty].clear();
           expect(window[windowProperty].removeItem).toHaveBeenCalledWith(
-            "com.adobe.alloy.example.a"
+            "com.adobe.alloy.example.a",
           );
           expect(window[windowProperty].removeItem).toHaveBeenCalledWith(
-            "com.adobe.alloy.example.b"
+            "com.adobe.alloy.example.b",
           );
           expect(window[windowProperty].removeItem).not.toHaveBeenCalledWith(
-            "c"
+            "c",
           );
           expect(window[windowProperty].removeItem).not.toHaveBeenCalledWith(
-            "com.adobe.alloy.d"
+            "com.adobe.alloy.d",
           );
         });
       });

@@ -9,128 +9,177 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import createDataCollector from "../../../../../src/components/DataCollector/index";
-import { noop } from "../../../../../src/utils";
+import { vi, beforeEach, describe, it, expect } from "vitest";
+import createDataCollector from "../../../../../src/components/DataCollector/index.js";
+import { noop } from "../../../../../src/utils/index.js";
 
 describe("Event Command", () => {
   let event;
   let eventManager;
+  let logger;
   let sendEventCommand;
   beforeEach(() => {
-    event = jasmine.createSpyObj("event", [
-      "documentMayUnload",
-      "setUserData",
-      "setUserXdm",
-      "mergeXdm",
-      "mergeMeta"
-    ]);
-
+    event = {
+      documentMayUnload: vi.fn(),
+      setUserData: vi.fn(),
+      setUserXdm: vi.fn(),
+      mergeXdm: vi.fn(),
+      mergeMeta: vi.fn(),
+      mergeConfigOverride: vi.fn(),
+    };
+    logger = {
+      warn: vi.fn(),
+    };
     eventManager = {
       createEvent() {
         return event;
       },
-      sendEvent: jasmine
-        .createSpy()
-        .and.callFake((_event, { applyUserProvidedData = noop }) => {
+      sendEvent: vi
+        .fn()
+        .mockImplementation((_event, { applyUserProvidedData = noop }) => {
           applyUserProvidedData();
           return Promise.resolve("sendEventResult");
-        })
+        }),
     };
-
     const dataCollector = createDataCollector({
-      eventManager
+      eventManager,
+      logger,
     });
     sendEventCommand = dataCollector.commands.sendEvent;
   });
-
   it("sends event", () => {
-    const xdm = { a: "b" };
-    const data = { c: "d" };
+    const xdm = {
+      a: "b",
+    };
+    const data = {
+      c: "d",
+    };
     const options = {
-      renderDecisions: true,
+      otherSetting: "foo",
       type: "test",
       xdm,
       data,
-      documentUnloading: true
+      documentUnloading: true,
     };
-
-    return sendEventCommand.run(options).then(result => {
+    return sendEventCommand.run(options).then((result) => {
       expect(event.documentMayUnload).toHaveBeenCalled();
       expect(event.setUserXdm).toHaveBeenCalledWith(xdm);
       expect(event.setUserData).toHaveBeenCalledWith(data);
       expect(eventManager.sendEvent).toHaveBeenCalledWith(event, {
-        renderDecisions: true,
-        decisionScopes: []
+        otherSetting: "foo",
       });
       expect(result).toEqual("sendEventResult");
     });
   });
-
   it("sends event with decisionScopes parameter when decisionScopes is not empty", () => {
     const options = {
       renderDecisions: true,
-      decisionScopes: ["Foo1", "Foo2"]
+      decisionScopes: ["Foo1"],
+      personalization: {
+        decisionScopes: ["Foo2"],
+      },
     };
-
-    return sendEventCommand.run(options).then(result => {
+    return sendEventCommand.run(options).then((result) => {
       expect(eventManager.sendEvent).toHaveBeenCalledWith(event, {
         renderDecisions: true,
-        decisionScopes: ["Foo1", "Foo2"]
+        decisionScopes: ["Foo1"],
+        personalization: {
+          decisionScopes: ["Foo2"],
+        },
       });
       expect(result).toEqual("sendEventResult");
     });
   });
-
+  it("sends event with surfaces parameter when surfaces is not empty", () => {
+    const options = {
+      renderDecisions: true,
+      personalization: {
+        surfaces: ["Foo1", "Foo2"],
+      },
+    };
+    return sendEventCommand.run(options).then((result) => {
+      expect(eventManager.sendEvent).toHaveBeenCalledWith(event, {
+        renderDecisions: true,
+        personalization: {
+          surfaces: ["Foo1", "Foo2"],
+        },
+      });
+      expect(result).toEqual("sendEventResult");
+    });
+  });
   it("does not call documentMayUnload if documentUnloading is not defined", () => {
     return sendEventCommand.run({}).then(() => {
       expect(event.documentMayUnload).not.toHaveBeenCalled();
     });
   });
-
-  it("sets renderDecisions to false if renderDecisions is not defined", () => {
-    return sendEventCommand.run({}).then(() => {
-      expect(eventManager.sendEvent).toHaveBeenCalledWith(event, {
-        renderDecisions: false,
-        decisionScopes: []
-      });
-    });
-  });
-
   it("merges eventType", () => {
     return sendEventCommand
       .run({
-        type: "mytype"
+        type: "mytype",
       })
       .then(() => {
         expect(event.mergeXdm).toHaveBeenCalledWith({
-          eventType: "mytype"
+          eventType: "mytype",
         });
       });
   });
-
   it("merges eventMergeID", () => {
     return sendEventCommand
       .run({
-        mergeId: "mymergeid"
+        mergeId: "mymergeid",
       })
       .then(() => {
         expect(event.mergeXdm).toHaveBeenCalledWith({
-          eventMergeId: "mymergeid"
+          eventMergeId: "mymergeid",
         });
       });
   });
-
-  it("merges datasetId", () => {
+  it("merges datasetId into the override configuration", () => {
+    const datasetId = "mydatasetId";
     return sendEventCommand
       .run({
-        datasetId: "mydatasetId"
+        datasetId,
       })
       .then(() => {
-        expect(event.mergeMeta).toHaveBeenCalledWith({
-          collect: {
-            datasetId: "mydatasetId"
-          }
-        });
+        expect(eventManager.sendEvent).toHaveBeenCalledWith(
+          expect.any(Object),
+          {
+            edgeConfigOverrides: {
+              com_adobe_experience_platform: {
+                datasets: {
+                  event: {
+                    datasetId,
+                  },
+                },
+              },
+            },
+          },
+        );
+        expect(logger.warn).toHaveBeenCalled();
+      });
+  });
+  it("includes configuration if provided", () => {
+    return sendEventCommand
+      .run({
+        renderDecisions: true,
+        edgeConfigOverrides: {
+          target: {
+            propertyToken: "hello",
+          },
+        },
+      })
+      .then(() => {
+        expect(eventManager.sendEvent).toHaveBeenCalledWith(
+          expect.any(Object),
+          {
+            renderDecisions: true,
+            edgeConfigOverrides: {
+              target: {
+                propertyToken: "hello",
+              },
+            },
+          },
+        );
       });
   });
 });

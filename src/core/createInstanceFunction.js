@@ -10,17 +10,8 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-export default executeCommand => {
-  return args => {
-    // Would use destructuring, but destructuring doesn't work on IE
-    // without polyfilling Symbol.
-    // https://github.com/babel/babel/issues/7597
-    const resolve = args[0];
-    const reject = args[1];
-    const userProvidedArgs = args[2];
-    const commandName = userProvidedArgs[0];
-    const options = userProvidedArgs[1];
-
+export default (executeCommand) => {
+  return ([resolve, reject, [commandName, options]]) => {
     executeCommand(commandName, options).then(resolve, reject);
   };
 };

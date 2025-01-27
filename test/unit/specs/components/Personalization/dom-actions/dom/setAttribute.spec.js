@@ -10,25 +10,25 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import setAttribute from "../../../../../../../src/components/Personalization/dom-actions/dom/setAttribute";
+import { afterEach, describe, it, expect } from "vitest";
+import setAttribute from "../../../../../../../src/components/Personalization/dom-actions/dom/setAttribute.js";
 import {
   createNode,
   removeNode,
-  selectNodes
-} from "../../../../../../../src/utils/dom";
-import { getAttribute } from "../../../../../../../src/components/Personalization/dom-actions/dom";
+  selectNodes,
+} from "../../../../../../../src/utils/dom/index.js";
+import { getAttribute } from "../../../../../../../src/components/Personalization/dom-actions/dom/index.js";
 
 describe("Personalization::DOM::setAttribute", () => {
   afterEach(() => {
     selectNodes("#fooId").forEach(removeNode);
   });
-
   it("should set the attribute for the element", () => {
-    const element = createNode("div", { id: "fooId" });
+    const element = createNode("div", {
+      id: "fooId",
+    });
     setAttribute(element, "foo-data", "dummyValue");
-
     const attr = getAttribute(element, "foo-data");
-
     expect(attr).toEqual("dummyValue");
   });
 });

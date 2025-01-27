@@ -10,7 +10,8 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import createComponent from "../../../../../src/components/Personalization/createComponent";
+import { vi, beforeEach, describe, it, expect } from "vitest";
+import createComponent from "../../../../../src/components/Personalization/createComponent.js";
 
 describe("Personalization", () => {
   let logger;
@@ -23,7 +24,10 @@ describe("Personalization", () => {
   let mergeQuery;
   let event;
   let personalizationComponent;
-
+  let setTargetMigration;
+  let mergeDecisionsMeta;
+  let renderedPropositions;
+  let cacheUpdate;
   const build = () => {
     personalizationComponent = createComponent({
       logger,
@@ -33,126 +37,149 @@ describe("Personalization", () => {
       isAuthoringModeEnabled,
       mergeQuery,
       viewCache,
-      showContainers
+      showContainers,
+      setTargetMigration,
+      mergeDecisionsMeta,
+      renderedPropositions,
     });
   };
-
   beforeEach(() => {
-    event = jasmine.createSpyObj("event", ["mergeQuery", "getViewName"]);
-    event.getViewName.and.returnValue({});
-
-    logger = {
-      info: jasmine.createSpy("logger.info"),
-      warn: jasmine.createSpy("logger.warn")
+    event = {
+      mergeQuery: vi.fn(),
+      getViewName: vi.fn(),
     };
-    isAuthoringModeEnabled = jasmine
-      .createSpy("isAuthoringModeEnabled")
-      .and.returnValue(false);
-    fetchDataHandler = jasmine.createSpy("fetchDataHandler");
-    viewChangeHandler = jasmine.createSpy("viewChangeHandler");
-    onClickHandler = jasmine.createSpy("onClickHandler");
-    showContainers = jasmine.createSpy("showContainers");
-    mergeQuery = jasmine.createSpy("mergeQuery");
-    viewCache = jasmine.createSpyObj("viewCache", [
-      "isInitialized",
-      "storeViews"
-    ]);
-
+    event.getViewName.mockReturnValue({});
+    logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+    };
+    isAuthoringModeEnabled = vi.fn().mockReturnValue(false);
+    fetchDataHandler = vi.fn();
+    viewChangeHandler = vi.fn();
+    onClickHandler = vi.fn();
+    showContainers = vi.fn();
+    mergeQuery = vi.fn();
+    viewCache = {
+      isInitialized: vi.fn(),
+      createCacheUpdate: vi.fn(),
+    };
+    cacheUpdate = {
+      update: vi.fn(),
+      cancel: vi.fn(),
+    };
+    viewCache.createCacheUpdate.mockReturnValue(cacheUpdate);
+    setTargetMigration = vi.fn();
+    mergeDecisionsMeta = vi.fn();
+    renderedPropositions = {
+      clear: vi.fn(),
+    };
     build();
   });
-
-  it("shouldn't do anything since authoringMode is enabled", () => {
-    isAuthoringModeEnabled.and.returnValue(true);
-    const renderDecisions = true;
-    const decisionScopes = ["foo"];
-    personalizationComponent.lifecycle.onBeforeEvent({
-      event,
-      renderDecisions,
-      decisionScopes
+  describe("onBeforeEvent", () => {
+    it("shouldn't do anything since authoringMode is enabled", () => {
+      isAuthoringModeEnabled.mockReturnValue(true);
+      const renderDecisions = true;
+      const personalization = {
+        decisionScopes: ["foo"],
+      };
+      personalizationComponent.lifecycle.onBeforeEvent({
+        event,
+        renderDecisions,
+        personalization,
+      });
+      expect(logger.warn).toHaveBeenCalledWith(
+        "Rendering is disabled for authoring mode.",
+      );
+      expect(isAuthoringModeEnabled).toHaveBeenCalled();
+      expect(mergeQuery).toHaveBeenCalledWith(event, {
+        enabled: false,
+      });
+      expect(fetchDataHandler).not.toHaveBeenCalled();
+      expect(viewChangeHandler).not.toHaveBeenCalled();
+      expect(onClickHandler).not.toHaveBeenCalled();
+      expect(showContainers).not.toHaveBeenCalled();
+      expect(viewCache.createCacheUpdate).not.toHaveBeenCalled();
     });
-
-    expect(logger.warn).toHaveBeenCalledWith(
-      "Rendering is disabled for authoring mode."
-    );
-    expect(isAuthoringModeEnabled).toHaveBeenCalled();
-    expect(mergeQuery).toHaveBeenCalledWith(event, { enabled: false });
-    expect(fetchDataHandler).not.toHaveBeenCalled();
-    expect(viewChangeHandler).not.toHaveBeenCalled();
-    expect(onClickHandler).not.toHaveBeenCalled();
-    expect(showContainers).not.toHaveBeenCalled();
-    expect(viewCache.storeViews).not.toHaveBeenCalled();
-  });
-
-  it("should trigger pageLoad if there are decisionScopes", () => {
-    const renderDecisions = false;
-    const decisionScopes = ["alloy1"];
-    personalizationComponent.lifecycle.onBeforeEvent({
-      event,
-      renderDecisions,
-      decisionScopes
+    it("should trigger pageLoad if there are decisionScopes", () => {
+      const renderDecisions = false;
+      const personalization = {
+        decisionScopes: ["alloy1"],
+      };
+      personalizationComponent.lifecycle.onBeforeEvent({
+        event,
+        renderDecisions,
+        personalization,
+      });
+      expect(isAuthoringModeEnabled).toHaveBeenCalled();
+      expect(fetchDataHandler).toHaveBeenCalled();
+      expect(viewChangeHandler).not.toHaveBeenCalled();
+      expect(mergeQuery).not.toHaveBeenCalled();
+      expect(onClickHandler).not.toHaveBeenCalled();
+      expect(viewCache.createCacheUpdate).toHaveBeenCalled();
     });
-
-    expect(isAuthoringModeEnabled).toHaveBeenCalled();
-    expect(fetchDataHandler).toHaveBeenCalled();
-    expect(viewChangeHandler).not.toHaveBeenCalled();
-    expect(mergeQuery).not.toHaveBeenCalled();
-    expect(onClickHandler).not.toHaveBeenCalled();
-    expect(viewCache.storeViews).toHaveBeenCalled();
-  });
-  it("should trigger pageLoad if cache is not initialized", () => {
-    const renderDecisions = false;
-    const decisionScopes = [];
-    viewCache.isInitialized.and.returnValue(false);
-
-    personalizationComponent.lifecycle.onBeforeEvent({
-      event,
-      renderDecisions,
-      decisionScopes
+    it("should trigger pageLoad if cache is not initialized", () => {
+      const renderDecisions = false;
+      const personalization = {
+        decisionScopes: [],
+      };
+      viewCache.isInitialized.mockReturnValue(false);
+      personalizationComponent.lifecycle.onBeforeEvent({
+        event,
+        renderDecisions,
+        personalization,
+      });
+      expect(isAuthoringModeEnabled).toHaveBeenCalled();
+      expect(fetchDataHandler).toHaveBeenCalled();
+      expect(viewChangeHandler).not.toHaveBeenCalled();
+      expect(mergeQuery).not.toHaveBeenCalled();
+      expect(onClickHandler).not.toHaveBeenCalled();
+      expect(viewCache.createCacheUpdate).toHaveBeenCalled();
     });
-
-    expect(isAuthoringModeEnabled).toHaveBeenCalled();
-    expect(fetchDataHandler).toHaveBeenCalled();
-    expect(viewChangeHandler).not.toHaveBeenCalled();
-    expect(mergeQuery).not.toHaveBeenCalled();
-    expect(onClickHandler).not.toHaveBeenCalled();
-    expect(viewCache.storeViews).toHaveBeenCalled();
-  });
-  it("should trigger viewHandler if cache is initialized and viewName is provided", () => {
-    const renderDecisions = false;
-    const decisionScopes = [];
-    viewCache.isInitialized.and.returnValue(true);
-    event.getViewName.and.returnValue("cart");
-
-    personalizationComponent.lifecycle.onBeforeEvent({
-      event,
-      renderDecisions,
-      decisionScopes
+    it("should trigger viewHandler if cache is initialized and viewName is provided", () => {
+      const renderDecisions = false;
+      const personalization = {
+        decisionScopes: [],
+      };
+      viewCache.isInitialized.mockReturnValue(true);
+      event.getViewName.mockReturnValue("cart");
+      personalizationComponent.lifecycle.onBeforeEvent({
+        event,
+        renderDecisions,
+        personalization,
+      });
+      expect(isAuthoringModeEnabled).toHaveBeenCalled();
+      expect(fetchDataHandler).not.toHaveBeenCalled();
+      expect(viewChangeHandler).toHaveBeenCalled();
+      expect(mergeQuery).not.toHaveBeenCalled();
+      expect(onClickHandler).not.toHaveBeenCalled();
+      expect(viewCache.createCacheUpdate).not.toHaveBeenCalled();
     });
-
-    expect(isAuthoringModeEnabled).toHaveBeenCalled();
-    expect(fetchDataHandler).not.toHaveBeenCalled();
-    expect(viewChangeHandler).toHaveBeenCalled();
-    expect(mergeQuery).not.toHaveBeenCalled();
-    expect(onClickHandler).not.toHaveBeenCalled();
-    expect(viewCache.storeViews).not.toHaveBeenCalled();
-  });
-  it("should trigger onClickHandler at onClick", () => {
-    personalizationComponent.lifecycle.onClick({ event });
-
-    expect(onClickHandler).toHaveBeenCalled();
-  });
-  it("should call showContainers() when a request fails", () => {
-    viewCache.isInitialized.and.returnValue(true);
-    const onRequestFailure = jasmine
-      .createSpy("onRequestFailure")
-      .and.callFake(func => func());
-
-    personalizationComponent.lifecycle.onBeforeEvent({
-      event,
-      onRequestFailure
+    it("should trigger onClickHandler at onClick", () => {
+      personalizationComponent.lifecycle.onClick({
+        event,
+      });
+      expect(onClickHandler).toHaveBeenCalled();
     });
-
-    expect(onRequestFailure).toHaveBeenCalled();
-    expect(showContainers).toHaveBeenCalled();
+    it("should call showContainers() when a request fails", () => {
+      viewCache.isInitialized.mockReturnValue(true);
+      const onRequestFailure = vi.fn().mockImplementation((func) => func());
+      personalizationComponent.lifecycle.onBeforeEvent({
+        event,
+        onRequestFailure,
+      });
+      expect(onRequestFailure).toHaveBeenCalled();
+      expect(showContainers).toHaveBeenCalled();
+    });
+  });
+  describe("onBeforeRequest", () => {
+    it("should always call setTargetMigration during onBeforeRequest", () => {
+      const request = {
+        getPayload: vi.fn(),
+      };
+      personalizationComponent.lifecycle.onBeforeRequest({
+        request,
+      });
+      expect(setTargetMigration).toHaveBeenNthCalledWith(1, request);
+    });
   });
 });

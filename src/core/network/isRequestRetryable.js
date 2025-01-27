@@ -14,9 +14,8 @@ import {
   TOO_MANY_REQUESTS,
   SERVICE_UNAVAILABLE,
   BAD_GATEWAY,
-  GATEWAY_TIMEOUT
-} from "../../constants/httpStatusCode";
-import { includes } from "../../utils";
+  GATEWAY_TIMEOUT,
+} from "../../constants/httpStatusCode.js";
 
 const MAX_RETRIES = 3;
 
@@ -24,7 +23,7 @@ const RETRYABLE_STATUS_CODES = [
   TOO_MANY_REQUESTS,
   SERVICE_UNAVAILABLE,
   BAD_GATEWAY,
-  GATEWAY_TIMEOUT
+  GATEWAY_TIMEOUT,
 ];
 
 // These rules are in accordance with
@@ -32,6 +31,6 @@ const RETRYABLE_STATUS_CODES = [
 export default ({ response, retriesAttempted }) => {
   return (
     retriesAttempted < MAX_RETRIES &&
-    includes(RETRYABLE_STATUS_CODES, response.statusCode)
+    RETRYABLE_STATUS_CODES.includes(response.statusCode)
   );
 };

@@ -10,32 +10,31 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import removeAttribute from "../../../../../../../src/components/Personalization/dom-actions/dom/removeAttribute";
+import { afterEach, describe, it, expect } from "vitest";
+import removeAttribute from "../../../../../../../src/components/Personalization/dom-actions/dom/removeAttribute.js";
 import {
   createNode,
   removeNode,
-  selectNodes
-} from "../../../../../../../src/utils/dom";
+  selectNodes,
+} from "../../../../../../../src/utils/dom/index.js";
 import {
   getAttribute,
-  setAttribute
-} from "../../../../../../../src/components/Personalization/dom-actions/dom";
+  setAttribute,
+} from "../../../../../../../src/components/Personalization/dom-actions/dom/index.js";
 
 describe("Personalization::DOM::removeAttribute", () => {
   afterEach(() => {
     selectNodes("#fooId").forEach(removeNode);
   });
-
   it("should remove the element's attribute", () => {
-    const element = createNode("div", { id: "fooId" });
+    const element = createNode("div", {
+      id: "fooId",
+    });
     setAttribute(element, "data-foo", "dummyValue");
-
     const attr = getAttribute(element, "data-foo");
     expect(attr).toEqual("dummyValue");
-
     removeAttribute(element, "data-foo");
     const removedAttr = getAttribute(element, "data-foo");
-
     expect(removedAttr).toBeNull();
   });
 });

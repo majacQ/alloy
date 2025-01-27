@@ -10,21 +10,43 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import libraryVersion from "../../constants/libraryVersion";
+import libraryVersion from "../../constants/libraryVersion.js";
+import { CONFIGURE, SET_DEBUG } from "../../constants/coreCommands.js";
 
-const createLibraryInfo = () => {
+const prepareLibraryInfo = ({ config, componentRegistry }) => {
+  const allCommands = [
+    ...componentRegistry.getCommandNames(),
+    CONFIGURE,
+    SET_DEBUG,
+  ].sort();
+  const resultConfig = { ...config };
+  Object.keys(config).forEach((key) => {
+    const value = config[key];
+    if (typeof value !== "function") {
+      return;
+    }
+    resultConfig[key] = value.toString();
+  });
+  const components = componentRegistry.getComponentNames();
+  return {
+    version: libraryVersion,
+    configs: resultConfig,
+    commands: allCommands,
+    components,
+  };
+};
+
+const createLibraryInfo = ({ config, componentRegistry }) => {
   return {
     commands: {
       getLibraryInfo: {
         run: () => {
           return {
-            libraryInfo: {
-              version: libraryVersion
-            }
+            libraryInfo: prepareLibraryInfo({ config, componentRegistry }),
           };
-        }
-      }
-    }
+        },
+      },
+    },
   };
 };
 

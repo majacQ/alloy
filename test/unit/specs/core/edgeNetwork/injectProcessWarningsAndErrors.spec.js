@@ -10,116 +10,113 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import injectProcessWarningsAndErrors from "../../../../../src/core/edgeNetwork/injectProcessWarningsAndErrors";
+import { vi, beforeEach, describe, it, expect } from "vitest";
+import injectProcessWarningsAndErrors from "../../../../../src/core/edgeNetwork/injectProcessWarningsAndErrors.js";
 
 describe("processWarningsAndErrors", () => {
   let logger;
   let processWarningsAndErrors;
-
   beforeEach(() => {
-    logger = jasmine.createSpyObj("logger", ["warn", "error"]);
-    processWarningsAndErrors = injectProcessWarningsAndErrors({ logger });
+    logger = {
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+    processWarningsAndErrors = injectProcessWarningsAndErrors({
+      logger,
+    });
   });
-
   it("throws error if status code is below 2xx", () => {
     expect(() => {
       processWarningsAndErrors({
-        statusCode: 199
+        statusCode: 199,
       });
     }).toThrowError(
-      "The server responded with a status code 199 and no response body."
+      "The server responded with a status code 199 and no response body.",
     );
   });
-
   it("throws error if status code is above 2xx", () => {
     expect(() => {
       processWarningsAndErrors({
-        statusCode: 300
+        statusCode: 300,
       });
     }).toThrowError(
-      "The server responded with a status code 300 and no response body."
+      "The server responded with a status code 300 and no response body.",
     );
   });
-
   it("throws error if no parsed body and HTTP status code is not 204", () => {
     expect(() => {
       processWarningsAndErrors({
-        statusCode: 200
+        statusCode: 200,
       });
     }).toThrowError(
-      "The server responded with a status code 200 and no response body."
+      "The server responded with a status code 200 and no response body.",
     );
   });
-
   it("throws an error if parsed body does not have handle array", () => {
     expect(() => {
       processWarningsAndErrors({
         statusCode: 200,
         body: '{"foo":"bar"}',
-        parsedBody: { foo: "bar" }
+        parsedBody: {
+          foo: "bar",
+        },
       });
     }).toThrowError(
-      'The server responded with a status code 200 and response body:\n{\n  "foo": "bar"\n}'
+      'The server responded with a status code 200 and response body:\n{\n  "foo": "bar"\n}',
     );
   });
-
   it("logs warnings", () => {
     const warnings = [
       {
         title: "General warning",
-        detail: "General warning detail"
+        detail: "General warning detail",
       },
       {
         title: "Personalization warning",
-        detail: "Personalization warning detail"
-      }
+        detail: "Personalization warning detail",
+      },
     ];
-
     processWarningsAndErrors({
       statusCode: 200,
       parsedBody: {
         handle: [],
-        warnings
-      }
+        warnings,
+      },
     });
-
     expect(logger.warn).toHaveBeenCalledWith(
       "The server responded with a warning:",
-      warnings[0]
+      warnings[0],
     );
     expect(logger.warn).toHaveBeenCalledWith(
       "The server responded with a warning:",
-      warnings[1]
+      warnings[1],
     );
   });
-
   it("logs non-fatal errors", () => {
     const errors = [
       {
         title: "General warning",
-        detail: "General warning detail"
+        detail: "General warning detail",
       },
       {
         title: "Personalization warning",
-        detail: "Personalization warning detail"
-      }
+        detail: "Personalization warning detail",
+      },
     ];
-
     processWarningsAndErrors({
       statusCode: 207,
       parsedBody: {
         handle: [],
-        errors
-      }
+        errors,
+      },
     });
-
     expect(logger.error).toHaveBeenCalledWith(
       "The server responded with a non-fatal error:",
-      errors[0]
+      errors[0],
     );
     expect(logger.error).toHaveBeenCalledWith(
       "The server responded with a non-fatal error:",
-      errors[1]
+      errors[1],
     );
   });
 });

@@ -10,7 +10,9 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import { createCallbackAggregator } from "../utils";
+import PAGE_WIDE_SCOPE from "../constants/pageWideScope.js";
+import { createCallbackAggregator, noop } from "../utils/index.js";
+import { createRequestParams } from "../utils/request/index.js";
 
 const EVENT_CANCELLATION_MESSAGE =
   "Event was canceled because the onBeforeEventSend callback returned false.";
@@ -23,42 +25,48 @@ export default ({
   createEvent,
   createDataCollectionRequestPayload,
   createDataCollectionRequest,
-  sendEdgeNetworkRequest
+  sendEdgeNetworkRequest,
+  applyResponse,
 }) => {
-  const { onBeforeEventSend } = config;
+  const { onBeforeEventSend, edgeConfigOverrides: globalConfigOverrides } =
+    config;
 
   return {
     createEvent,
     /**
-     * Sends an event. This includes running the event and payload through
-     * the appropriate lifecycle hooks, sending the request to the server,
-     * and handling the response.
-     * @param {Object} event This will be JSON stringified and used inside
-     * the request payload.
-     * @param {Object} [options]
-     * @param {boolean} [options.renderDecisions=false]
-     * @param {Array} [options.decisionScopes]
-     * This will be passed to components
-     * so they can take appropriate action.
+     * Sends an event. This includes running the event and payload through the
+     * appropriate lifecycle hooks, sending the request to the server, and
+     * handling the response.
+     * @param {Object} event This will be JSON stringified and used inside the
+     * request payload.
+     * @param {Object} [options] Options to pass on to the onBeforeEvent
+     * lifecycle method
+     * @param {Object} [options.edgeConfigOverrides] Settings that take
+     * precedence over the global datastream configuration, including which
+     * datastream to use.
      * @returns {*}
      */
     sendEvent(event, options = {}) {
-      const { renderDecisions = false, decisionScopes } = options;
-      const payload = createDataCollectionRequestPayload();
-      const request = createDataCollectionRequest(payload);
+      const { edgeConfigOverrides: localConfigOverrides, ...otherOptions } =
+        options;
+      const requestParams = createRequestParams({
+        payload: createDataCollectionRequestPayload(),
+        localConfigOverrides,
+        globalConfigOverrides,
+      });
+      const request = createDataCollectionRequest(requestParams);
       const onResponseCallbackAggregator = createCallbackAggregator();
       const onRequestFailureCallbackAggregator = createCallbackAggregator();
 
       return lifecycle
         .onBeforeEvent({
+          ...otherOptions,
           event,
-          renderDecisions,
-          decisionScopes,
           onResponse: onResponseCallbackAggregator.add,
-          onRequestFailure: onRequestFailureCallbackAggregator.add
+          onRequestFailure: onRequestFailureCallbackAggregator.add,
         })
         .then(() => {
-          payload.addEvent(event);
+          requestParams.payload.addEvent(event);
           return consent.awaitConsent();
         })
         .then(() => {
@@ -92,9 +100,42 @@ export default ({
             request,
             runOnResponseCallbacks: onResponseCallbackAggregator.call,
             runOnRequestFailureCallbacks:
-              onRequestFailureCallbackAggregator.call
+              onRequestFailureCallbackAggregator.call,
           });
         });
-    }
+    },
+    applyResponse(event, options = {}) {
+      const {
+        renderDecisions = false,
+        decisionContext = {},
+        responseHeaders = {},
+        responseBody = { handle: [] },
+        personalization,
+      } = options;
+
+      const payload = createDataCollectionRequestPayload();
+      const request = createDataCollectionRequest({ payload });
+      const onResponseCallbackAggregator = createCallbackAggregator();
+
+      return lifecycle
+        .onBeforeEvent({
+          event,
+          renderDecisions,
+          decisionContext,
+          decisionScopes: [PAGE_WIDE_SCOPE],
+          personalization,
+          onResponse: onResponseCallbackAggregator.add,
+          onRequestFailure: noop,
+        })
+        .then(() => {
+          payload.addEvent(event);
+          return applyResponse({
+            request,
+            responseHeaders,
+            responseBody,
+            runOnResponseCallbacks: onResponseCallbackAggregator.call,
+          });
+        });
+    },
   };
 };

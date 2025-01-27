@@ -10,11 +10,14 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import { noop, defer } from "../../utils";
-import createPersonalizationDetails from "./createPersonalizationDetails";
-import { AUTHORING_ENABLED } from "./constants/loggerMessage";
+import { noop, isNonEmptyArray } from "../../utils/index.js";
+import createPersonalizationDetails from "./createPersonalizationDetails.js";
+import { AUTHORING_ENABLED } from "./constants/loggerMessage.js";
+import { PropositionEventType } from "../../constants/propositionEventType.js";
+import validateApplyPropositionsOptions from "./validateApplyPropositionsOptions.js";
 
 export default ({
+  getPageLocation,
   logger,
   fetchDataHandler,
   viewChangeHandler,
@@ -22,16 +25,31 @@ export default ({
   isAuthoringModeEnabled,
   mergeQuery,
   viewCache,
-  showContainers
+  showContainers,
+  applyPropositions,
+  setTargetMigration,
+  mergeDecisionsMeta,
+  renderedPropositions,
+  onDecisionHandler,
+  handleConsentFlicker,
 }) => {
   return {
     lifecycle: {
+      onComponentsRegistered() {
+        handleConsentFlicker();
+      },
+      onDecision: onDecisionHandler,
+      onBeforeRequest({ request }) {
+        setTargetMigration(request);
+        return Promise.resolve();
+      },
       onBeforeEvent({
         event,
         renderDecisions,
         decisionScopes = [],
+        personalization = {},
         onResponse = noop,
-        onRequestFailure = noop
+        onRequestFailure = noop,
       }) {
         // Include propositions on all responses, overridden with data as needed
         onResponse(() => ({ propositions: [] }));
@@ -42,43 +60,71 @@ export default ({
 
           // If we are in authoring mode we disable personalization
           mergeQuery(event, { enabled: false });
-          return;
+          return Promise.resolve();
         }
 
         const personalizationDetails = createPersonalizationDetails({
+          getPageLocation,
           renderDecisions,
           decisionScopes,
+          personalization,
           event,
-          viewCache
+          isCacheInitialized: viewCache.isInitialized(),
+          logger,
         });
 
-        if (personalizationDetails.shouldFetchData()) {
-          const decisionsDeferred = defer();
-
-          viewCache.storeViews(decisionsDeferred.promise);
-          onRequestFailure(() => decisionsDeferred.reject());
-          fetchDataHandler({
-            decisionsDeferred,
-            personalizationDetails,
-            event,
-            onResponse
-          });
-          return;
+        const decisionsMetaPromises = [];
+        if (personalizationDetails.shouldIncludeRenderedPropositions()) {
+          decisionsMetaPromises.push(renderedPropositions.clear());
         }
 
-        if (personalizationDetails.shouldUseCachedData()) {
-          // eslint-disable-next-line consistent-return
-          return viewChangeHandler({
+        if (personalizationDetails.shouldFetchData()) {
+          const cacheUpdate = viewCache.createCacheUpdate(
+            personalizationDetails.getViewName(),
+          );
+          onRequestFailure(() => cacheUpdate.cancel());
+
+          fetchDataHandler({
+            cacheUpdate,
             personalizationDetails,
             event,
             onResponse,
-            onRequestFailure
           });
+        } else if (personalizationDetails.shouldUseCachedData()) {
+          decisionsMetaPromises.push(
+            viewChangeHandler({
+              personalizationDetails,
+              event,
+              onResponse,
+              onRequestFailure,
+            }),
+          );
         }
+
+        // This promise.all waits for both the pending display notifications to be resolved
+        // (i.e. the top of page call to finish rendering) and the view change handler to
+        // finish rendering anything for this view.
+        return Promise.all(decisionsMetaPromises).then((decisionsMetas) => {
+          // We only want to call mergeDecisionsMeta once, but we can get the propositions
+          // from two places: the pending display notifications and the view change handler.
+          const decisionsMeta = decisionsMetas.flatMap((dms) => dms);
+          if (isNonEmptyArray(decisionsMeta)) {
+            mergeDecisionsMeta(event, decisionsMeta, [
+              PropositionEventType.DISPLAY,
+            ]);
+          }
+        });
       },
       onClick({ event, clickedElement }) {
         onClickHandler({ event, clickedElement });
-      }
-    }
+      },
+    },
+    commands: {
+      applyPropositions: {
+        optionsValidator: (options) =>
+          validateApplyPropositionsOptions({ logger, options }),
+        run: applyPropositions,
+      },
+    },
   };
 };

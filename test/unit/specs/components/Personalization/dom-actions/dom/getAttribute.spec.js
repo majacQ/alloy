@@ -10,23 +10,21 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import getAttribute from "../../../../../../../src/components/Personalization/dom-actions/dom/getAttribute";
-import createFragment from "../../../../../../../src/components/Personalization/dom-actions/dom/createFragment";
+import { describe, it, expect } from "vitest";
+import getAttribute from "../../../../../../../src/components/Personalization/dom-actions/dom/getAttribute.js";
+import createFragment from "../../../../../../../src/components/Personalization/dom-actions/dom/createFragment.js";
 
 describe("Personalization::helper::dom::getAttribute", () => {
   it("returns element's attribute if exists", () => {
     const element = createFragment(`<div id="foo">foo</div>`);
     const name = "id";
     const result = getAttribute(element.firstElementChild, name);
-
     expect(result).toEqual("foo");
   });
-
   it("returns null if element doesn't have this attribute", () => {
     const element = createFragment(`<div id="foo">foo</div>`);
     const name = "title";
     const result = getAttribute(element.firstElementChild, name);
-
     expect(result).toBeNull();
   });
 });

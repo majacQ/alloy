@@ -1,4 +1,17 @@
-const setupDeployment = require("../helpers/setupDeployment");
+/*
+Copyright 2024 Adobe. All rights reserved.
+This file is licensed to you under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License. You may obtain a copy
+of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under
+the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+OF ANY KIND, either express or implied. See the License for the specific language
+governing permissions and limitations under the License.
+*/
+
+import { vi, describe, beforeEach, it, expect } from "vitest";
+import setupDeployment from "../helpers/setupDeployment.js";
 
 describe("setupDeployment", () => {
   let exec;
@@ -9,15 +22,15 @@ describe("setupDeployment", () => {
   let container;
 
   beforeEach(() => {
-    exec = jasmine.createSpy("exec");
-    logger = jasmine.createSpyObj("logger", ["info"]);
+    exec = vi.fn();
+    logger = { info: vi.fn() };
     container = {
       exec,
       githubActor,
       githubRepository,
       logger,
       npmToken,
-      container
+      container,
     };
   });
 
@@ -26,16 +39,16 @@ describe("setupDeployment", () => {
     expect(logger.info).toHaveBeenCalled();
     // make sure all the container parameters are defined
     expect(exec).toHaveBeenCalledWith(
-      jasmine.anything(),
-      jasmine.stringMatching(/myactor/)
+      expect.anything(),
+      expect.stringMatching(/myactor/),
     );
     expect(exec).toHaveBeenCalledWith(
-      jasmine.anything(),
-      jasmine.stringMatching(/myrepo/)
+      expect.anything(),
+      expect.stringMatching(/myrepo/),
     );
     expect(exec).toHaveBeenCalledWith(
-      jasmine.anything(),
-      jasmine.stringMatching(/mytoken/)
+      expect.anything(),
+      expect.stringMatching(/mytoken/),
     );
   });
 });

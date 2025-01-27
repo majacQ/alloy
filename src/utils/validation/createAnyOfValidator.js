@@ -9,18 +9,19 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-import assertValid from "./assertValid";
-import find from "../find";
+import { assertValid } from "./utils.js";
 
-export default (validators, message) => (value, path) => {
-  const valid = find(validators, validator => {
-    try {
-      validator(value, path);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  });
-  assertValid(valid, value, path, message);
-  return value;
-};
+export default (validators, message) =>
+  function anyOf(value, path) {
+    let newValue;
+    const valid = validators.find((validator) => {
+      try {
+        newValue = validator.call(this, value, path);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    assertValid(valid, value, path, message);
+    return newValue;
+  };

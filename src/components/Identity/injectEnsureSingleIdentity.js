@@ -16,11 +16,11 @@ export default ({
   setDomainForInitialIdentityPayload,
   addLegacyEcidToPayload,
   awaitIdentityCookie,
-  logger
+  logger,
 }) => {
   let obtainedIdentityPromise;
 
-  const allowRequestToGoWithoutIdentity = request => {
+  const allowRequestToGoWithoutIdentity = (request) => {
     setDomainForInitialIdentityPayload(request);
     return addLegacyEcidToPayload(request.getPayload());
   };
@@ -53,9 +53,8 @@ export default ({
     if (obtainedIdentityPromise) {
       // We don't have an identity cookie, but at least one request has
       // been sent to get it. Konductor may set the identity cookie in the
-      // response. We will hold up this request until the last request
-      // requiring identity returns and awaitIdentityCookie confirms the
-      // identity was set.
+      // response. We will hold up this request until the previous request
+      // returns and awaitIdentityCookie confirms the identity was set.
       logger.info("Delaying request while retrieving ECID from server.");
       const previousObtainedIdentityPromise = obtainedIdentityPromise;
 
@@ -88,8 +87,10 @@ export default ({
     // cookie
     obtainedIdentityPromise = awaitIdentityCookie({
       onResponse,
-      onRequestFailure
+      onRequestFailure,
     });
+    // This prevents an un-caught promise in the console when the identity isn't set.
+    obtainedIdentityPromise.catch(() => undefined);
     return allowRequestToGoWithoutIdentity(request);
   };
 };

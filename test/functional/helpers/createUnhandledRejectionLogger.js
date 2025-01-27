@@ -1,10 +1,21 @@
+/*
+Copyright 2023 Adobe. All rights reserved.
+This file is licensed to you under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License. You may obtain a copy
+of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under
+the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+OF ANY KIND, either express or implied. See the License for the specific language
+governing permissions and limitations under the License.
+*/
 import { t } from "testcafe";
 
 const containsMessageMatchingRegex = (messages, messageRegex) => {
-  return messages.find(message => messageRegex.test(message)) !== undefined;
+  return messages.find((message) => messageRegex.test(message)) !== undefined;
 };
 
-const formatFoundMessages = messages => {
+const formatFoundMessages = (messages) => {
   if (!messages.length) {
     return "No messages found.";
   }
@@ -42,31 +53,31 @@ export default async () => {
     });
   };
 
-  const expectMessageMatching = async messageRegex => {
+  const expectMessageMatching = async (messageRegex) => {
     const messages = await getMessagesSinceReset();
     await t
       .expect(containsMessageMatchingRegex(messages, messageRegex))
       .ok(
         `No unhandled rejection message was found matching ${messageRegex}. ${formatFoundMessages(
-          messages
-        )}`
+          messages,
+        )}`,
       );
   };
 
-  const expectNoMessageMatching = async messageRegex => {
+  const expectNoMessageMatching = async (messageRegex) => {
     const messages = await getMessagesSinceReset();
     await t
       .expect(containsMessageMatchingRegex(messages, messageRegex))
       .notOk(
         `An unhandled rejection message was found matching ${messageRegex} when none was expected. ${formatFoundMessages(
-          messages
-        )}`
+          messages,
+        )}`,
       );
   };
 
   return {
     reset,
     expectMessageMatching,
-    expectNoMessageMatching
+    expectNoMessageMatching,
   };
 };

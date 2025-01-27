@@ -12,19 +12,21 @@ governing permissions and limitations under the License.
 
 import {
   createAddIdentity,
-  createRequestPayload
-} from "../../../utils/request";
+  createHasIdentity,
+  createRequestPayload,
+} from "../../../utils/request/index.js";
 
-export default namespaces => {
+export default (namespaces) => {
   const content = {
     query: {
       identity: {
-        fetch: namespaces
-      }
-    }
+        fetch: namespaces,
+      },
+    },
   };
   return createRequestPayload({
     content,
-    addIdentity: createAddIdentity(content)
+    addIdentity: createAddIdentity(content),
+    hasIdentity: createHasIdentity(content),
   });
 };

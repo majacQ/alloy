@@ -10,38 +10,42 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import injectAddLegacyEcidToPayload from "../../../../../src/components/Identity/injectAddLegacyEcidToPayload";
+import { vi, beforeEach, describe, it, expect } from "vitest";
+import injectAddLegacyEcidToPayload from "../../../../../src/components/Identity/injectAddLegacyEcidToPayload.js";
 
 describe("Identity::injectAddLegacyEcidToPayload", () => {
   let getLegacyEcid;
   let addEcidToPayload;
   let payload;
   let addLegacyEcidToPayload;
-
   beforeEach(() => {
-    getLegacyEcid = jasmine
-      .createSpy("getEcidFromLegacy")
-      .and.returnValue(Promise.resolve("legacy@adobe"));
-    addEcidToPayload = jasmine.createSpy("addEcidToPayload");
+    getLegacyEcid = vi.fn().mockReturnValue(Promise.resolve("legacy@adobe"));
+    addEcidToPayload = vi.fn();
     addLegacyEcidToPayload = injectAddLegacyEcidToPayload({
       getLegacyEcid,
-      addEcidToPayload
+      addEcidToPayload,
     });
     payload = {
-      type: "payload"
+      hasIdentity: vi.fn(),
     };
   });
-
   it("does not add legacy ECID to payload if legacy ECID does not exist", () => {
-    getLegacyEcid.and.returnValue(Promise.resolve());
+    payload.hasIdentity.mockReturnValue(false);
+    getLegacyEcid.mockReturnValue(Promise.resolve());
     return addLegacyEcidToPayload(payload).then(() => {
       expect(addEcidToPayload).not.toHaveBeenCalled();
     });
   });
-
   it("adds legacy ECID to payload if legacy ECID exists", () => {
+    payload.hasIdentity.mockReturnValue(false);
     return addLegacyEcidToPayload(payload).then(() => {
       expect(addEcidToPayload).toHaveBeenCalledWith(payload, "legacy@adobe");
     });
+  });
+  it("does not add legacy ECID to payload if the payload already has an ecid", async () => {
+    payload.hasIdentity.mockReturnValue(true);
+    const response = await addLegacyEcidToPayload(payload);
+    expect(getLegacyEcid).not.toHaveBeenCalled();
+    expect(response).toBeUndefined();
   });
 });

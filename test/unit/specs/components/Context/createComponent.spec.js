@@ -10,56 +10,77 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import createComponent from "../../../../../src/components/Context/createComponent";
-import createConfig from "../../../../../src/core/config/createConfig";
+import { vi, beforeEach, describe, it, expect } from "vitest";
+import createComponent from "../../../../../src/components/Context/createComponent.js";
+import createConfig from "../../../../../src/core/config/createConfig.js";
 
 describe("Context::createComponent", () => {
   const logger = {
     log() {},
-    warn() {}
+    warn() {},
   };
-  const context1 = xdm => {
+  const context1 = (xdm) => {
     xdm.a = "1";
   };
-  const context2 = xdm => {
+  const context2 = (xdm) => {
     xdm.b = "2";
   };
-  const requiredContext = xdm => {
+  const requiredContext = (xdm) => {
     xdm.c = "3";
   };
-  const availableContexts = { context1, context2 };
+  const availableContexts = {
+    context1,
+    context2,
+  };
   let event;
-
   beforeEach(() => {
-    event = jasmine.createSpyObj("event", ["mergeXdm"]);
+    event = {
+      mergeXdm: vi.fn(),
+    };
   });
-
-  it("enables the configured contexts", () => {
-    const config = createConfig({ context: ["context1", "context2"] });
+  it("enables the configured contexts", async () => {
+    const config = createConfig({
+      context: ["context1", "context2"],
+    });
     const component = createComponent(config, logger, availableContexts, [
-      requiredContext
+      requiredContext,
     ]);
-    component.lifecycle.onBeforeEvent({ event });
-
-    expect(event.mergeXdm).toHaveBeenCalledWith({ a: "1", b: "2", c: "3" });
+    await component.lifecycle.onBeforeEvent({
+      event,
+    });
+    expect(event.mergeXdm).toHaveBeenCalledWith({
+      a: "1",
+      b: "2",
+      c: "3",
+    });
   });
-  it("ignores unknown contexts", () => {
-    const config = createConfig({ context: ["unknowncontext", "context1"] });
+  it("ignores unknown contexts", async () => {
+    const config = createConfig({
+      context: ["unknowncontext", "context1"],
+    });
     const component = createComponent(config, logger, availableContexts, [
-      requiredContext
+      requiredContext,
     ]);
-    component.lifecycle.onBeforeEvent({ event });
-
-    expect(event.mergeXdm).toHaveBeenCalledWith({ a: "1", c: "3" });
+    await component.lifecycle.onBeforeEvent({
+      event,
+    });
+    expect(event.mergeXdm).toHaveBeenCalledWith({
+      a: "1",
+      c: "3",
+    });
   });
-
-  it("can disable non-required contexts", () => {
-    const config = createConfig({ context: [] });
+  it("can disable non-required contexts", async () => {
+    const config = createConfig({
+      context: [],
+    });
     const component = createComponent(config, logger, availableContexts, [
-      requiredContext
+      requiredContext,
     ]);
-    component.lifecycle.onBeforeEvent({ event });
-
-    expect(event.mergeXdm).toHaveBeenCalledWith({ c: "3" });
+    await component.lifecycle.onBeforeEvent({
+      event,
+    });
+    expect(event.mergeXdm).toHaveBeenCalledWith({
+      c: "3",
+    });
   });
 });

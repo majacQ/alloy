@@ -10,63 +10,59 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import createConsentStateMachine from "../../../../../src/core/consent/createConsentStateMachine";
-import flushPromiseChains from "../../../helpers/flushPromiseChains";
+import { vi, beforeEach, describe, it, expect } from "vitest";
+import createConsentStateMachine from "../../../../../src/core/consent/createConsentStateMachine.js";
+import flushPromiseChains from "../../../helpers/flushPromiseChains.js";
 
 const DECLINED_CONSENT_ERROR_CODE = "declinedConsent";
-
 describe("createConsentStateMachine", () => {
   let logger;
   let subject;
-
   beforeEach(() => {
-    logger = jasmine.createSpyObj("logger", ["info", "warn"]);
-    subject = createConsentStateMachine({ logger });
+    logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+    };
+    subject = createConsentStateMachine({
+      logger,
+    });
   });
-
   it("does not resolve promise if consent is pending", () => {
     subject.pending();
-    const onFulfilled = jasmine.createSpy("onFulfilled");
+    const onFulfilled = vi.fn();
     subject.awaitConsent().then(onFulfilled);
-
     return flushPromiseChains().then(() => {
       expect(onFulfilled).not.toHaveBeenCalled();
     });
   });
-
   it("resolves promise if user consented to all purposes", () => {
     subject.in();
-    const onFulfilled = jasmine.createSpy("onFulfilled");
+    const onFulfilled = vi.fn();
     subject.awaitConsent().then(onFulfilled);
-
     return flushPromiseChains().then(() => {
       expect(onFulfilled).toHaveBeenCalled();
     });
   });
-
   [
     ["default", "No consent preferences have been set."],
     ["initial", "The user declined consent."],
-    ["new", "The user declined consent."]
+    ["new", "The user declined consent."],
   ].forEach(([source, expectedMessage]) => {
     it("rejects promise if user consented to no purposes", () => {
       subject.out(source);
-      const onRejected = jasmine.createSpy("onRejected");
+      const onRejected = vi.fn();
       subject.awaitConsent().catch(onRejected);
-
       return flushPromiseChains().then(() => {
-        const error = onRejected.calls.argsFor(0)[0];
+        const error = onRejected.mock.calls[0][0];
         expect(error.code).toBe(DECLINED_CONSENT_ERROR_CODE);
         expect(error.message).toBe(expectedMessage);
       });
     });
   });
-
   it("resolves queued promises when consent set to in", () => {
     subject.pending();
-    const onFulfilled = jasmine.createSpy("onFulfilled");
+    const onFulfilled = vi.fn();
     subject.awaitConsent().then(onFulfilled);
-
     return flushPromiseChains()
       .then(() => {
         expect(onFulfilled).not.toHaveBeenCalled();
@@ -77,12 +73,10 @@ describe("createConsentStateMachine", () => {
         expect(onFulfilled).toHaveBeenCalled();
       });
   });
-
   it("rejects queued promises when consent set to out", () => {
     subject.pending();
-    const onRejected = jasmine.createSpy("onRejected");
+    const onRejected = vi.fn();
     subject.awaitConsent().catch(onRejected);
-
     return flushPromiseChains()
       .then(() => {
         expect(onRejected).not.toHaveBeenCalled();
@@ -90,50 +84,48 @@ describe("createConsentStateMachine", () => {
         return flushPromiseChains();
       })
       .then(() => {
-        const error = onRejected.calls.argsFor(0)[0];
+        const error = onRejected.mock.calls[0][0];
         expect(error.code).toBe(DECLINED_CONSENT_ERROR_CODE);
         expect(error.message).toBe("The user declined consent.");
       });
   });
 
-  it("rejects promises when it is not initialized", () => {
-    const onRejected = jasmine.createSpy("onRejected");
-    return subject
-      .awaitConsent()
-      .catch(onRejected)
-      .then(() => {
-        expect(onRejected).toHaveBeenCalled();
-      });
+  // This is what would happen when the consent component is not included
+  it("resolves promises when it is not initialized", () => {
+    const onFulfilled = vi.fn();
+    subject.awaitConsent().then(onFulfilled);
+    return flushPromiseChains().then(() => {
+      expect(onFulfilled).toHaveBeenCalled();
+    });
   });
-
   [
     ["in", "default"],
     [
       "in",
       "initial",
       "Loaded user consent preferences. The user previously consented.",
-      "info"
+      "info",
     ],
     ["in", "new", "User consented.", "info"],
     [
       "out",
       "default",
-      "User consent preferences not found. Default consent of out will be used."
+      "User consent preferences not found. Default consent of out will be used.",
     ],
     [
       "out",
       "initial",
-      "Loaded user consent preferences. The user previously declined consent."
+      "Loaded user consent preferences. The user previously declined consent.",
     ],
     ["out", "new", "User declined consent."],
     [
       "pending",
       "default",
       "User consent preferences not found. Default consent of pending will be used. Some commands may be delayed.",
-      "info"
+      "info",
     ],
     ["pending", "initial"],
-    ["pending", "new"]
+    ["pending", "new"],
   ].forEach(([action, source, expectedMessage, logLevel = "warn"]) => {
     it(`logs the correct messages when ${action} is called with source ${source}`, () => {
       subject[action](source);
@@ -144,12 +136,11 @@ describe("createConsentStateMachine", () => {
       }
     });
   });
-
   [
     ["in", "User consented.", "info"],
-    ["out", "User declined consent.", "warn"]
+    ["out", "User declined consent.", "warn"],
   ].forEach(([action, expectedMessage, logLevel]) => {
-    ["in", "out", "pending"].forEach(defaultConsent => {
+    ["in", "out", "pending"].forEach((defaultConsent) => {
       it(`logs a message when first setting consent (${defaultConsent} => ${action}) using setConsent`, () => {
         subject[defaultConsent]("default");
         subject.pending();
@@ -164,12 +155,28 @@ describe("createConsentStateMachine", () => {
     });
     it(`doesn't log a message when a request returns or fails. (${action})`, () => {
       subject[action]("initial");
-      logger.info.calls.reset();
-      logger.warn.calls.reset();
+      logger.info.mockReset();
+      logger.warn.mockReset();
       subject[action]("new");
       subject[action]("new");
       expect(logger.info).not.toHaveBeenCalled();
       expect(logger.warn).not.toHaveBeenCalled();
+    });
+  });
+  describe("withConsent", () => {
+    ["default", "initial", "new"].forEach((source) => {
+      it(`returns immediately when ${source} consent is set to "in"`, () => {
+        subject.in(source);
+        return expect(subject.withConsent()).resolves.toBe();
+      });
+      it(`rejects when ${source} consent is set to "out"`, () => {
+        subject.out(source);
+        return expect(subject.withConsent()).rejects.toThrowError();
+      });
+      it(`rejects when ${source} consent is set to "pending"`, () => {
+        subject.pending(source);
+        return expect(subject.withConsent()).rejects.toThrowError();
+      });
     });
   });
 });

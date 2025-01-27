@@ -10,13 +10,43 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import { string, boolean } from "../../utils/validation";
+import {
+  boolean,
+  callback,
+  objectOf,
+  string,
+} from "../../utils/validation/index.js";
 
-export default {
+const DEFAULT_DOWNLOAD_QUALIFIER =
+  "\\.(exe|zip|wav|mp3|mov|mpg|avi|wmv|pdf|doc|docx|xls|xlsx|ppt|pptx)$";
+
+export const downloadLinkQualifier = string()
+  .regexp()
+  .default(DEFAULT_DOWNLOAD_QUALIFIER);
+
+const validators = objectOf({
   clickCollectionEnabled: boolean().default(true),
-  downloadLinkQualifier: string()
-    .regexp()
-    .default(
-      "\\.(exe|zip|wav|mp3|mov|mpg|avi|wmv|pdf|doc|docx|xls|xlsx|ppt|pptx)$"
-    )
-};
+  clickCollection: objectOf({
+    internalLinkEnabled: boolean().default(true),
+    externalLinkEnabled: boolean().default(true),
+    downloadLinkEnabled: boolean().default(true),
+    // TODO: Consider moving downloadLinkQualifier here.
+    sessionStorageEnabled: boolean().default(false),
+    eventGroupingEnabled: boolean().default(false),
+    filterClickProperties: callback(),
+  }).default({
+    internalLinkEnabled: true,
+    externalLinkEnabled: true,
+    downloadLinkEnabled: true,
+    sessionStorageEnabled: false,
+    eventGroupingEnabled: false,
+  }),
+  downloadLinkQualifier,
+  onBeforeLinkClickSend: callback().deprecated(
+    'The field "onBeforeLinkClickSend" has been deprecated. Use "clickCollection.filterClickDetails" instead.',
+  ),
+});
+
+// Export both the validators and the default qualifier
+export { DEFAULT_DOWNLOAD_QUALIFIER };
+export default validators;

@@ -17,21 +17,20 @@ export default ({ fetch }) => {
       cache: "no-cache",
       credentials: "include", // To set the cookie header in the request.
       headers: {
-        "Content-Type": "text/plain; charset=UTF-8"
+        "Content-Type": "text/plain; charset=UTF-8",
       },
-      referrer: "client",
-      body
-    }).then(response => {
-      return response.text().then(responseBody => ({
+      referrerPolicy: "no-referrer-when-downgrade",
+      body,
+    }).then((response) => {
+      return response.text().then((responseBody) => ({
         statusCode: response.status,
         // We expose headers through a function instead of creating an object
         // with all the headers up front largely because the native
-        // request.getResponseHeader method is case-insensitive but also because it prevents
-        // us from having to add header parsing logic when using XHR to make requests.
+        // request.getResponseHeader method is case-insensitive.
         getHeader(name) {
           return response.headers.get(name);
         },
-        body: responseBody
+        body: responseBody,
       }));
     });
   };

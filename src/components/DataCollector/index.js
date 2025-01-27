@@ -10,26 +10,28 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import validateUserEventOptions from "./validateUserEventOptions";
+import validateUserEventOptions from "./validateUserEventOptions.js";
+import validateApplyResponse from "./validateApplyResponse.js";
+import { deepAssign } from "../../utils/index.js";
 
-const createDataCollector = ({ eventManager }) => {
+const createDataCollector = ({ eventManager, logger }) => {
   return {
     commands: {
       sendEvent: {
         documentationUri: "https://adobe.ly/3GQ3Q7t",
-        optionsValidator: options => {
+        optionsValidator: (options) => {
           return validateUserEventOptions({ options });
         },
-        run: options => {
+        run: (options) => {
           const {
             xdm,
             data,
-            documentUnloading = false,
+            documentUnloading,
             type,
             mergeId,
-            renderDecisions = false,
-            decisionScopes = [],
-            datasetId
+            datasetId,
+            edgeConfigOverrides,
+            ...eventManagerOptions
           } = options;
           const event = eventManager.createEvent();
 
@@ -42,35 +44,63 @@ const createDataCollector = ({ eventManager }) => {
 
           if (type) {
             event.mergeXdm({
-              eventType: type
+              eventType: type,
             });
           }
 
           if (mergeId) {
             event.mergeXdm({
-              eventMergeId: mergeId
+              eventMergeId: mergeId,
             });
+          }
+
+          if (edgeConfigOverrides) {
+            eventManagerOptions.edgeConfigOverrides = edgeConfigOverrides;
           }
 
           if (datasetId) {
-            event.mergeMeta({
-              collect: {
-                datasetId
-              }
+            logger.warn(
+              "The 'datasetId' option has been deprecated. Please use 'edgeConfigOverrides.com_adobe_experience_platform.datasets.event.datasetId' instead.",
+            );
+            eventManagerOptions.edgeConfigOverrides = edgeConfigOverrides || {};
+            deepAssign(eventManagerOptions.edgeConfigOverrides, {
+              com_adobe_experience_platform: {
+                datasets: { event: { datasetId } },
+              },
             });
           }
+          return eventManager.sendEvent(event, eventManagerOptions);
+        },
+      },
+      applyResponse: {
+        documentationUri: "",
+        optionsValidator: (options) => {
+          return validateApplyResponse({ options });
+        },
+        run: (options) => {
+          const {
+            renderDecisions = false,
+            decisionContext = {},
+            responseHeaders = {},
+            responseBody = { handle: [] },
+            personalization,
+          } = options;
 
-          return eventManager.sendEvent(event, {
+          const event = eventManager.createEvent();
+
+          return eventManager.applyResponse(event, {
             renderDecisions,
-            decisionScopes
+            decisionContext,
+            responseHeaders,
+            responseBody,
+            personalization,
           });
-        }
-      }
-    }
+        },
+      },
+    },
   };
 };
 
 createDataCollector.namespace = "DataCollector";
-createDataCollector.configValidators = {};
 
 export default createDataCollector;

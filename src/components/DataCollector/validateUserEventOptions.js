@@ -10,8 +10,16 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import { string, objectOf, boolean, arrayOf } from "../../utils/validation";
-import { validateIdentityMap } from "../../utils";
+import {
+  string,
+  objectOf,
+  boolean,
+  arrayOf,
+} from "../../utils/validation/index.js";
+import {
+  validateConfigOverride,
+  validateIdentityMap,
+} from "../../utils/index.js";
 /**
  * Verifies user provided event options.
  * @param {*} options The user event options to validate
@@ -22,12 +30,26 @@ export default ({ options }) => {
     type: string(),
     xdm: objectOf({
       eventType: string(),
-      identityMap: validateIdentityMap
+      identityMap: validateIdentityMap,
     }),
     data: objectOf({}),
+    documentUnloading: boolean(),
     renderDecisions: boolean(),
-    decisionScopes: arrayOf(string()),
-    datasetId: string()
-  }).required();
+    decisionScopes: arrayOf(string()).uniqueItems(),
+    personalization: objectOf({
+      decisionScopes: arrayOf(string()).uniqueItems(),
+      surfaces: arrayOf(string()).uniqueItems(),
+      sendDisplayEvent: boolean().default(true),
+      includeRenderedPropositions: boolean().default(false),
+      defaultPersonalizationEnabled: boolean(),
+      decisionContext: objectOf({}),
+    }).default({ sendDisplayEvent: true }),
+    datasetId: string(),
+    mergeId: string(),
+    edgeConfigOverrides: validateConfigOverride,
+    initializePersonalization: boolean(),
+  })
+    .required()
+    .noUnknownFields();
   return eventOptionsValidator(options);
 };

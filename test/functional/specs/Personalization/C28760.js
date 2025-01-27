@@ -1,16 +1,27 @@
+/*
+Copyright 2023 Adobe. All rights reserved.
+This file is licensed to you under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License. You may obtain a copy
+of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under
+the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+OF ANY KIND, either express or implied. See the License for the specific language
+governing permissions and limitations under the License.
+*/
 import { t } from "testcafe";
-import createNetworkLogger from "../../helpers/networkLogger";
-import { responseStatus } from "../../helpers/assertions/index";
-import createFixture from "../../helpers/createFixture";
+import createNetworkLogger from "../../helpers/networkLogger/index.js";
+import { responseStatus } from "../../helpers/assertions/index.js";
+import createFixture from "../../helpers/createFixture/index.js";
 import {
   compose,
   orgMainConfigMain,
-  debugEnabled
-} from "../../helpers/constants/configParts";
-import getResponseBody from "../../helpers/networkLogger/getResponseBody";
-import createResponse from "../../helpers/createResponse";
-import { TEST_PAGE as TEST_PAGE_URL } from "../../helpers/constants/url";
-import createAlloyProxy from "../../helpers/createAlloyProxy";
+  debugEnabled,
+} from "../../helpers/constants/configParts/index.js";
+import getResponseBody from "../../helpers/networkLogger/getResponseBody.js";
+import createResponse from "../../helpers/createResponse.js";
+import { TEST_PAGE as TEST_PAGE_URL } from "../../helpers/constants/url.js";
+import createAlloyProxy from "../../helpers/createAlloyProxy.js";
 
 const networkLogger = createNetworkLogger();
 const config = compose(orgMainConfigMain, debugEnabled);
@@ -19,17 +30,17 @@ createFixture({
   title:
     "C28760: A notification collect should be triggered if a VEC dom actions offer has been rendered",
   url: `${TEST_PAGE_URL}?test=C28760`,
-  requestHooks: [networkLogger.edgeEndpointLogs]
+  requestHooks: [networkLogger.edgeEndpointLogs],
 });
 
 test.meta({
   ID: "C28760",
   SEVERITY: "P0",
-  TEST_RUN: "Regression"
+  TEST_RUN: "Regression",
 });
 
-const extractDecisionsMeta = payload => {
-  return payload.map(decision => {
+const extractDecisionsMeta = (payload) => {
+  return payload.map((decision) => {
     const { id, scope, scopeDetails } = decision;
     return { id, scope, scopeDetails };
   });
@@ -40,9 +51,9 @@ test("Test C28760: A notification collect should be triggered if a VEC dom actio
   await alloy.configure(config);
   await alloy.sendEvent({ renderDecisions: true });
 
-  await responseStatus(networkLogger.edgeEndpointLogs.requests, 200);
+  await responseStatus(networkLogger.edgeEndpointLogs.requests, [200, 207]);
 
-  await t.expect(networkLogger.edgeEndpointLogs.requests.length).eql(2);
+  await t.expect(networkLogger.edgeEndpointLogs.count(() => true)).eql(2);
 
   const sendEventRequest = networkLogger.edgeEndpointLogs.requests[0];
   const requestBody = JSON.parse(sendEventRequest.request.body);
@@ -58,16 +69,16 @@ test("Test C28760: A notification collect should be triggered if a VEC dom actio
     "https://ns.adobe.com/personalization/dom-action",
     "https://ns.adobe.com/personalization/html-content-item",
     "https://ns.adobe.com/personalization/json-content-item",
-    "https://ns.adobe.com/personalization/redirect-item"
-  ].every(schema => personalizationSchemas.includes(schema));
+    "https://ns.adobe.com/personalization/redirect-item",
+  ].every((schema) => personalizationSchemas.includes(schema));
 
   await t.expect(result).eql(true);
 
   const response = JSON.parse(
-    getResponseBody(networkLogger.edgeEndpointLogs.requests[0])
+    getResponseBody(networkLogger.edgeEndpointLogs.requests[0]),
   );
   const personalizationPayload = createResponse({
-    content: response
+    content: response,
   }).getPayloadsByType("personalization:decisions");
 
   await t.expect(personalizationPayload[0].scope).eql(PAGE_WIDE_SCOPE);
@@ -77,7 +88,7 @@ test("Test C28760: A notification collect should be triggered if a VEC dom actio
 
   const sendNotificationRequest = networkLogger.edgeEndpointLogs.requests[1];
   const notificationRequestBody = JSON.parse(
-    sendNotificationRequest.request.body
+    sendNotificationRequest.request.body,
   );
 
   await t
@@ -86,7 +97,15 @@ test("Test C28760: A notification collect should be triggered if a VEC dom actio
   await t
     .expect(
       // eslint-disable-next-line no-underscore-dangle
-      notificationRequestBody.events[0].xdm._experience.decisioning.propositions
+      notificationRequestBody.events[0].xdm._experience.decisioning
+        .propositions,
     )
     .eql(notificationPayload);
+  await t
+    .expect(
+      // eslint-disable-next-line no-underscore-dangle
+      notificationRequestBody.events[0].xdm._experience.decisioning
+        .propositionEventType.display,
+    )
+    .eql(1);
 });

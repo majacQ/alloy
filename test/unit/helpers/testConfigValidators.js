@@ -9,32 +9,45 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-import { objectOf } from "../../../src/utils/validation";
+import { vi, it, expect } from "vitest";
 
 export default ({
   configValidators,
   validConfigurations,
   invalidConfigurations,
-  defaultValues
+  deprecatedConfigurations = [],
+  defaultValues,
 }) => {
   validConfigurations.forEach((cfg, i) => {
     it(`validates configuration (${i})`, () => {
-      objectOf(configValidators)(cfg);
+      configValidators(cfg);
     });
   });
-
   invalidConfigurations.forEach((cfg, i) => {
     it(`invalidates configuration (${i})`, () => {
       expect(() => {
-        objectOf(configValidators)(cfg);
+        configValidators(cfg);
       }).toThrowError();
     });
   });
-
   it("provides default values", () => {
-    const config = objectOf(configValidators)({});
-    Object.keys(defaultValues).forEach(key => {
+    const config = configValidators({});
+    Object.keys(defaultValues).forEach((key) => {
       expect(config[key]).toBe(defaultValues[key]);
+    });
+  });
+  deprecatedConfigurations.forEach((cfg, i) => {
+    it(`outputs messages for deprecated fields (${i})`, () => {
+      const logger = {
+        warn: vi.fn(),
+      };
+      configValidators.call(
+        {
+          logger,
+        },
+        cfg,
+      );
+      expect(logger.warn).toHaveBeenCalled();
     });
   });
 };

@@ -1,16 +1,28 @@
+/*
+Copyright 2023 Adobe. All rights reserved.
+This file is licensed to you under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License. You may obtain a copy
+of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under
+the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+OF ANY KIND, either express or implied. See the License for the specific language
+governing permissions and limitations under the License.
+*/
 import { t } from "testcafe";
-import createNetworkLogger from "../../helpers/networkLogger";
-import { responseStatus } from "../../helpers/assertions/index";
-import createFixture from "../../helpers/createFixture";
+import createNetworkLogger from "../../helpers/networkLogger/index.js";
+import { responseStatus } from "../../helpers/assertions/index.js";
+import createFixture from "../../helpers/createFixture/index.js";
 import {
   compose,
   orgMainConfigMain,
-  debugEnabled
-} from "../../helpers/constants/configParts";
-import getResponseBody from "../../helpers/networkLogger/getResponseBody";
-import createResponse from "../../helpers/createResponse";
-import { TEST_PAGE as TEST_PAGE_URL } from "../../helpers/constants/url";
-import createAlloyProxy from "../../helpers/createAlloyProxy";
+  debugEnabled,
+} from "../../helpers/constants/configParts/index.js";
+import getResponseBody from "../../helpers/networkLogger/getResponseBody.js";
+import createResponse from "../../helpers/createResponse.js";
+import { TEST_PAGE as TEST_PAGE_URL } from "../../helpers/constants/url.js";
+import createAlloyProxy from "../../helpers/createAlloyProxy.js";
+import awaitRequestResponse from "../../helpers/networkLogger/awaitRequestResponse.js";
 
 const networkLogger = createNetworkLogger();
 const config = compose(orgMainConfigMain, debugEnabled);
@@ -21,13 +33,13 @@ const decisionContent =
 createFixture({
   title: "C3272624: Support passing profile attributes and qualify for offers",
   url: `${TEST_PAGE_URL}?test=C3272624`,
-  requestHooks: [networkLogger.edgeEndpointLogs]
+  requestHooks: [networkLogger.edgeEndpointLogs],
 });
 
 test.meta({
   ID: "C3272624",
   SEVERITY: "P0",
-  TEST_RUN: "Regression"
+  TEST_RUN: "Regression",
 });
 
 test("Test C3272624: Support passing profile attributes and qualify for offers", async () => {
@@ -38,13 +50,13 @@ test("Test C3272624: Support passing profile attributes and qualify for offers",
     data: {
       __adobe: {
         target: {
-          "profile.favoriteCategory": "shoes"
-        }
-      }
-    }
+          "profile.favoriteCategory": "shoes",
+        },
+      },
+    },
   });
 
-  await responseStatus(networkLogger.edgeEndpointLogs.requests, 200);
+  await responseStatus(networkLogger.edgeEndpointLogs.requests, [200, 207]);
 
   await t.expect(networkLogger.edgeEndpointLogs.requests.length).eql(2);
 
@@ -55,11 +67,9 @@ test("Test C3272624: Support passing profile attributes and qualify for offers",
     .expect(requestBody.events[0].query.personalization.decisionScopes)
     .eql([PAGE_WIDE_SCOPE]);
 
-  const response = JSON.parse(
-    getResponseBody(networkLogger.edgeEndpointLogs.requests[0])
-  );
+  const response = JSON.parse(getResponseBody(sendEventRequest));
   const personalizationPayload = createResponse({
-    content: response
+    content: response,
   }).getPayloadsByType("personalization:decisions");
 
   await t.expect(personalizationPayload[0].scope).eql(PAGE_WIDE_SCOPE);
@@ -76,17 +86,19 @@ test("Test C3272624: Support passing profile attributes and qualify for offers",
     data: {
       __adobe: {
         target: {
-          "profile.favoriteCategory": "shirts"
-        }
-      }
-    }
+          "profile.favoriteCategory": "shirts",
+        },
+      },
+    },
   });
 
+  await awaitRequestResponse(networkLogger.edgeEndpointLogs.requests[1]);
+
   const responseTwo = JSON.parse(
-    getResponseBody(networkLogger.edgeEndpointLogs.requests[1])
+    getResponseBody(networkLogger.edgeEndpointLogs.requests[1]),
   );
   const personalizationPayloadTwo = createResponse({
-    content: responseTwo
+    content: responseTwo,
   }).getPayloadsByType("personalization:decisions");
 
   await t.expect(personalizationPayloadTwo.length).eql(0);

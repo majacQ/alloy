@@ -10,17 +10,16 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import isFunction from "../../../../src/utils/isFunction";
+import { describe, it, expect } from "vitest";
+import isFunction from "../../../../src/utils/isFunction.js";
 
 const nonFunctions = [{}, [], new Date(), /abc/, true, false, "text", 123];
-
 describe("isFunction", () => {
   it("returns true if the value is a function", () => {
     expect(isFunction(() => {})).toBe(true);
   });
-
   it("returns false if the value is not a function", () => {
-    nonFunctions.forEach(nonFunction => {
+    nonFunctions.forEach((nonFunction) => {
       expect(isFunction(nonFunction)).toBe(false);
     });
   });

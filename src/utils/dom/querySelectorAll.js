@@ -10,7 +10,13 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import toArray from "../toArray";
+import toArray from "../toArray.js";
 
-export default (context, selector) =>
-  toArray(context.querySelectorAll(selector));
+const SIBLING_PATTERN = /^\s*>/;
+
+export default (context, selector) => {
+  if (!SIBLING_PATTERN.test(selector)) {
+    return toArray(context.querySelectorAll(selector));
+  }
+  return toArray(context.querySelectorAll(`:scope ${selector}`));
+};

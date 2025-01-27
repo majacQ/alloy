@@ -10,16 +10,17 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import { createRequest } from "../../../utils/request";
+import { createRequest } from "../../../utils/request/index.js";
 
-export default identityRequestPayload => {
+export default ({ payload, datastreamIdOverride }) => {
   return createRequest({
-    payload: identityRequestPayload,
+    payload,
+    datastreamIdOverride,
     getAction() {
       return "identity/acquire";
     },
     getUseSendBeacon() {
       return false;
-    }
+    },
   });
 };

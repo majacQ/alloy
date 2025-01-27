@@ -10,23 +10,22 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import injectTimestamp from "../../../../../src/components/Context/injectTimestamp";
+import { beforeEach, describe, it, expect } from "vitest";
+import injectTimestamp from "../../../../../src/components/Context/injectTimestamp.js";
 
 describe("Context::injectTimestamp", () => {
   let dateProvider;
   const date = new Date("November 25, 2019 10:09:42 UTC");
-
   beforeEach(() => {
     dateProvider = () => {
       return date;
     };
   });
-
   it("adds timestamp", () => {
     const xdm = {};
     injectTimestamp(dateProvider)(xdm);
     expect(xdm).toEqual({
-      timestamp: "2019-11-25T10:09:42.000Z"
+      timestamp: "2019-11-25T10:09:42.000Z",
     });
   });
 });

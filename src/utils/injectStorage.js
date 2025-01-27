@@ -10,8 +10,7 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import baseNamespace from "../constants/namespace";
-import startsWith from "./startsWith";
+import baseNamespace from "../constants/namespace.js";
 
 const getStorageByType = (context, storageType, namespace) => {
   // When storage is disabled on Safari, the mere act of referencing
@@ -26,7 +25,7 @@ const getStorageByType = (context, storageType, namespace) => {
     getItem(name) {
       try {
         return context[storageType].getItem(namespace + name);
-      } catch (e) {
+      } catch {
         return null;
       }
     },
@@ -40,7 +39,7 @@ const getStorageByType = (context, storageType, namespace) => {
       try {
         context[storageType].setItem(namespace + name, value);
         return true;
-      } catch (e) {
+      } catch {
         return false;
       }
     },
@@ -49,23 +48,23 @@ const getStorageByType = (context, storageType, namespace) => {
      */
     clear() {
       try {
-        Object.keys(context[storageType]).forEach(key => {
-          if (startsWith(key, namespace)) {
+        Object.keys(context[storageType]).forEach((key) => {
+          if (key.startsWith(namespace)) {
             context[storageType].removeItem(key);
           }
         });
         return true;
-      } catch (e) {
+      } catch {
         return false;
       }
-    }
+    },
   };
 };
 
-export default context => additionalNamespace => {
+export default (context) => (additionalNamespace) => {
   const finalNamespace = baseNamespace + additionalNamespace;
   return {
     session: getStorageByType(context, "sessionStorage", finalNamespace),
-    persistent: getStorageByType(context, "localStorage", finalNamespace)
+    persistent: getStorageByType(context, "localStorage", finalNamespace),
   };
 };

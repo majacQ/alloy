@@ -10,28 +10,22 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import querySelectorAll from "./querySelectorAll";
-import startsWith from "../startsWith";
-import SHADOW_SEPARATOR from "../../constants/shadowSeparator";
+import querySelectorAll from "./querySelectorAll.js";
+import SHADOW_SEPARATOR from "../../constants/shadowSeparator.js";
 
-const splitWithShadow = selector => {
+const splitWithShadow = (selector) => {
   return selector.split(SHADOW_SEPARATOR);
 };
 
 const transformPrefix = (parent, selector) => {
-  const result = selector.trim();
-  const hasChildCombinatorPrefix = startsWith(result, ">");
+  const result = selector;
+  const hasChildCombinatorPrefix = result.startsWith(">");
   if (!hasChildCombinatorPrefix) {
     return result;
   }
 
-  // IE doesn't support :scope
-  if (window.document.documentMode) {
-    return result.substring(1).trim();
-  }
-
   const prefix =
-    parent instanceof Element || parent instanceof HTMLDocument
+    parent instanceof Element || parent instanceof Document
       ? ":scope"
       : ":host"; // see https://bugs.webkit.org/show_bug.cgi?id=233380
 
@@ -39,11 +33,6 @@ const transformPrefix = (parent, selector) => {
 };
 
 export default (context, selector) => {
-  // Shadow DOM should be supported
-  if (!window.document.documentElement.attachShadow) {
-    return querySelectorAll(context, selector.replace(SHADOW_SEPARATOR, ""));
-  }
-
   const parts = splitWithShadow(selector);
 
   if (parts.length < 2) {
@@ -54,8 +43,15 @@ export default (context, selector) => {
   // find each subselector element based on the previously selected node's shadowRoot
   let parent = context;
   for (let i = 0; i < parts.length; i += 1) {
-    const part = transformPrefix(parent, parts[i]);
-    const partNode = querySelectorAll(parent, part);
+    const part = parts[i].trim();
+    // if part is empty, it means there's a chained :eq:shadow selector
+    if (part === "" && parent.shadowRoot) {
+      parent = parent.shadowRoot;
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+    const prefixed = transformPrefix(parent, part);
+    const partNode = querySelectorAll(parent, prefixed);
 
     if (partNode.length === 0 || !partNode[0] || !partNode[0].shadowRoot) {
       return partNode;

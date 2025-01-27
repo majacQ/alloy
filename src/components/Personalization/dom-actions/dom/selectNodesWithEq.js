@@ -10,28 +10,21 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import escape from "css.escape";
-import { selectNodes } from "../../../../utils/dom";
-import { isNotEqSelector, splitWithEq } from "./helperForEq";
+import { selectNodes } from "../../../../utils/dom/index.js";
+import { isNotEqSelector, splitWithEq } from "./helperForEq.js";
 
 // Trying to match ID or CSS class
 const CSS_IDENTIFIER_PATTERN = /(#|\.)(-?\w+)/g;
-// This is required to remove leading " > " from parsed pieces
-const SIBLING_PATTERN = /^\s*>?\s*/;
-
-const cleanUp = str => str.replace(SIBLING_PATTERN, "").trim();
-
 // Here we use CSS.escape() to make sure we get
 // correct values for ID and CSS class
 // Please check:  https://www.w3.org/TR/css-syntax-3/#escaping
-// CSS.escape() polyfill can be found here: https://github.com/mathiasbynens/CSS.escape
-const replaceIdentifier = (_, $1, $2) => `${$1}${escape($2)}`;
+const replaceIdentifier = (_, $1, $2) => `${$1}${CSS.escape($2)}`;
 
-export const escapeIdentifiersInSelector = selector => {
+export const escapeIdentifiersInSelector = (selector) => {
   return selector.replace(CSS_IDENTIFIER_PATTERN, replaceIdentifier);
 };
 
-export const parseSelector = rawSelector => {
+export const parseSelector = (rawSelector) => {
   const result = [];
   const selector = escapeIdentifiersInSelector(rawSelector.trim());
   const parts = splitWithEq(selector);
@@ -39,7 +32,7 @@ export const parseSelector = rawSelector => {
   let i = 0;
 
   while (i < length) {
-    const sel = cleanUp(parts[i]);
+    const sel = parts[i];
     const eq = parts[i + 1];
 
     if (eq) {
@@ -59,7 +52,7 @@ export const parseSelector = rawSelector => {
  * @param {String} selector that contains Sizzle "eq(...)" pseudo selector
  * @returns {Array} an array of DOM nodes
  */
-export const selectNodesWithEq = selector => {
+export const selectNodesWithEq = (selector) => {
   const doc = document;
 
   if (isNotEqSelector(selector)) {

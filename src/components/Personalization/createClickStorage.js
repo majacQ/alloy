@@ -10,12 +10,11 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-const metasToArray = metas => {
-  return Object.keys(metas).map(key => {
+const metasToArray = (metas) => {
+  return Object.keys(metas).map((key) => {
     return {
       id: key,
-      scope: metas[key].scope,
-      scopeDetails: metas[key].scopeDetails
+      ...metas[key],
     };
   });
 };
@@ -23,13 +22,18 @@ const metasToArray = metas => {
 export default () => {
   const clickStorage = {};
 
-  const storeClickMetrics = value => {
-    if (!clickStorage[value.selector]) {
-      clickStorage[value.selector] = {};
+  const storeClickMeta = ({
+    selector,
+    meta: { id, scope, scopeDetails, trackingLabel, scopeType },
+  }) => {
+    if (!clickStorage[selector]) {
+      clickStorage[selector] = {};
     }
-    clickStorage[value.selector][value.meta.id] = {
-      scope: value.meta.scope,
-      scopeDetails: value.meta.scopeDetails
+    clickStorage[selector][id] = {
+      scope,
+      scopeDetails,
+      trackingLabel,
+      scopeType,
     };
   };
 
@@ -37,7 +41,7 @@ export default () => {
     return Object.keys(clickStorage);
   };
 
-  const getClickMetasBySelector = selector => {
+  const getClickMetas = (selector) => {
     const metas = clickStorage[selector];
     if (!metas) {
       return {};
@@ -45,8 +49,8 @@ export default () => {
     return metasToArray(clickStorage[selector]);
   };
   return {
-    storeClickMetrics,
+    storeClickMeta,
     getClickSelectors,
-    getClickMetasBySelector
+    getClickMetas,
   };
 };

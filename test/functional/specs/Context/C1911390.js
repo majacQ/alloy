@@ -1,23 +1,34 @@
+/*
+Copyright 2023 Adobe. All rights reserved.
+This file is licensed to you under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License. You may obtain a copy
+of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under
+the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+OF ANY KIND, either express or implied. See the License for the specific language
+governing permissions and limitations under the License.
+*/
 import { t } from "testcafe";
-import createNetworkLogger from "../../helpers/networkLogger";
-import createFixture from "../../helpers/createFixture";
-import createAlloyProxy from "../../helpers/createAlloyProxy";
-import { orgMainConfigMain } from "../../helpers/constants/configParts";
+import createNetworkLogger from "../../helpers/networkLogger/index.js";
+import createFixture from "../../helpers/createFixture/index.js";
+import createAlloyProxy from "../../helpers/createAlloyProxy.js";
+import { orgMainConfigMain } from "../../helpers/constants/configParts/index.js";
 
 const networkLogger = createNetworkLogger();
 
-const DESCRIPTION =
-  "C1911390 - Adds only device context data when only device is specified in configuration.";
+const ID = "C1911390";
+const DESCRIPTION = `${ID} - Ensure user-provided fields for context data don't leak across requests.`;
 
 createFixture({
   title: DESCRIPTION,
-  requestHooks: [networkLogger.edgeEndpointLogs]
+  requestHooks: [networkLogger.edgeEndpointLogs],
 });
 
 test.meta({
-  ID: "C1911390",
+  ID,
   SEVERITY: "P0",
-  TEST_RUN: "Regression"
+  TEST_RUN: "Regression",
 });
 
 test(DESCRIPTION, async () => {
@@ -26,27 +37,27 @@ test(DESCRIPTION, async () => {
   await alloy.sendEvent({
     xdm: {
       device: {
-        customDeviceField: "foo"
+        customDeviceField: "foo",
       },
       environment: {
-        customEnvironmentField: "foo"
+        customEnvironmentField: "foo",
       },
       implementationDetails: {
-        customImplementationDetailsField: "foo"
+        customImplementationDetailsField: "foo",
       },
       placeContext: {
-        customPlaceContextField: "foo"
+        customPlaceContextField: "foo",
       },
       web: {
-        customWebField: "foo"
-      }
-    }
+        customWebField: "foo",
+      },
+    },
   });
 
   await t.expect(networkLogger.edgeEndpointLogs.requests.length).eql(1);
 
   let parsedBody = JSON.parse(
-    networkLogger.edgeEndpointLogs.requests[0].request.body
+    networkLogger.edgeEndpointLogs.requests[0].request.body,
   );
   let sentXdm = parsedBody.events[0].xdm;
 
@@ -71,7 +82,7 @@ test(DESCRIPTION, async () => {
   await t.expect(networkLogger.edgeEndpointLogs.requests.length).eql(2);
 
   parsedBody = JSON.parse(
-    networkLogger.edgeEndpointLogs.requests[1].request.body
+    networkLogger.edgeEndpointLogs.requests[1].request.body,
   );
   sentXdm = parsedBody.events[0].xdm;
 

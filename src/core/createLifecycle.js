@@ -29,17 +29,20 @@ const hookNames = [
   // { response } is passed as the parameter)
   "onRequestFailure",
   // A user clicked on an element.
-  "onClick"
+  "onClick",
+  // Called by RulesEngine when a ruleset is satisfied with a list of
+  // propositions
+  "onDecision",
 ];
 
 const createHook = (componentRegistry, hookName) => {
   return (...args) => {
     return Promise.all(
-      componentRegistry.getLifecycleCallbacks(hookName).map(callback => {
-        return new Promise(resolve => {
+      componentRegistry.getLifecycleCallbacks(hookName).map((callback) => {
+        return new Promise((resolve) => {
           resolve(callback(...args));
         });
-      })
+      }),
     );
   };
 };
@@ -51,7 +54,7 @@ const createHook = (componentRegistry, hookName) => {
  * this by kicking the call to the Y method to the next JavaScript tick.
  * @returns {function}
  */
-const guardHook = fn => {
+const guardHook = (fn) => {
   return (...args) => {
     return Promise.resolve().then(() => {
       return fn(...args);
@@ -59,7 +62,7 @@ const guardHook = fn => {
   };
 };
 
-export default componentRegistry => {
+export default (componentRegistry) => {
   return hookNames.reduce((memo, hookName) => {
     memo[hookName] = guardHook(createHook(componentRegistry, hookName));
     return memo;

@@ -10,7 +10,8 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import injectSendBeaconRequest from "../../../../../../src/core/network/requestMethods/injectSendBeaconRequest";
+import { vi, describe, it, expect } from "vitest";
+import injectSendBeaconRequest from "../../../../../../src/core/network/requestMethods/injectSendBeaconRequest.js";
 
 // When running these tests in IE 11, they fail because IE doesn't like the
 // way the blob is constructed (see
@@ -18,63 +19,65 @@ import injectSendBeaconRequest from "../../../../../../src/core/network/requestM
 // Fortunately, if navigator.sendBeacon doesn't exist (IE 11), injectSendBeaconRequest
 // should never be used (see injectNetworkStrategy.js), so we can skip
 // these tests altogether.
-const guardForSendBeaconAvailability = spec => {
+const guardForSendBeaconAvailability = (spec) => {
   return window.navigator.sendBeacon
     ? spec
     : () => pending("No sendBeacon API available.");
 };
-
 describe("injectSendBeaconRequest", () => {
   it(
     "falls back to sendFetchRequest if sendBeacon fails",
     guardForSendBeaconAvailability(() => {
-      const sendBeacon = jasmine.createSpy().and.returnValue(false);
+      const sendBeacon = vi.fn().mockReturnValue(false);
       const sendFetchRequestPromise = Promise.resolve();
-      const sendFetchRequest = jasmine
-        .createSpy()
-        .and.returnValue(sendFetchRequestPromise);
-      const logger = jasmine.createSpyObj(["info"]);
+      const sendFetchRequest = vi.fn().mockReturnValue(sendFetchRequestPromise);
+      const logger = {
+        info: vi.fn(),
+      };
       const sendBeaconRequest = injectSendBeaconRequest({
         sendBeacon,
         sendFetchRequest,
-        logger
+        logger,
       });
-      const body = { a: "b" };
+      const body = {
+        a: "b",
+      };
       const result = sendBeaconRequest("https://example.com/endpoint", body);
       expect(sendBeacon).toHaveBeenCalledWith(
         "https://example.com/endpoint",
-        jasmine.any(Object)
+        expect.any(Object),
       );
       expect(sendFetchRequest).toHaveBeenCalledWith(
         "https://example.com/endpoint",
-        body
+        body,
       );
       expect(logger.info).toHaveBeenCalledWith(
-        jasmine.stringMatching("falling back to")
+        expect.stringMatching("falling back to"),
       );
       expect(result).toBe(sendFetchRequestPromise);
-    })
+    }),
   );
-
   it(
     "does not fall back to sendFetchRequest if sendBeacon succeeds",
     guardForSendBeaconAvailability(() => {
-      const sendBeacon = jasmine.createSpy().and.returnValue(true);
-      const body = { a: "b" };
-      const sendFetchRequest = jasmine.createSpy();
+      const sendBeacon = vi.fn().mockReturnValue(true);
+      const body = {
+        a: "b",
+      };
+      const sendFetchRequest = vi.fn();
       const sendBeaconRequest = injectSendBeaconRequest({
         sendBeacon,
-        sendFetchRequest
+        sendFetchRequest,
       });
-      // eslint-disable-next-line consistent-return
+
       return sendBeaconRequest("https://example.com/endpoint", body).then(
-        result => {
+        (result) => {
           expect(sendFetchRequest).not.toHaveBeenCalled();
           expect(result.statusCode).toBe(204);
           expect(result.getHeader("Content-Type")).toBeNull();
           expect(result.body).toBe("");
-        }
+        },
       );
-    })
+    }),
   );
 });

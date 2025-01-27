@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 import React, { useEffect } from "react";
 import ContentSecurityPolicy from "./components/ContentSecurityPolicy";
 
@@ -5,7 +7,7 @@ export default function RedirectOffers() {
   useEffect(() => {
     window
       .alloy("sendEvent", {
-        renderDecisions: true
+        renderDecisions: true,
       })
       .then(({ decisions = [] }) => {
         console.log("personalized decisions", decisions);

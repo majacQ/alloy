@@ -10,101 +10,128 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import { cookieJar } from "../../../../../src/utils";
-import createLegacyIdentity from "../../../../../src/components/Identity/createLegacyIdentity";
-import removeAllCookies from "../../../helpers/removeAllCookies";
+import { vi, beforeEach, describe, it, expect } from "vitest";
+import createLegacyIdentity from "../../../../../src/components/Identity/createLegacyIdentity.js";
 
 describe("Identity::createLegacyIdentity", () => {
   let idMigrationEnabled;
+  let orgId;
+  let getEcidFromVisitor;
+  let apexDomain;
+  let isPageSsl;
+  let cookieJar;
   let legacyIdentity;
-  const getEcidFromVisitor = jasmine
-    .createSpy()
-    .and.returnValue(Promise.resolve());
-  const orgId = "TEST_ORG";
-
+  beforeEach(() => {
+    idMigrationEnabled = true;
+    orgId = "TEST_ORG";
+    getEcidFromVisitor = vi.fn().mockReturnValue(Promise.resolve());
+    apexDomain = "mydomain";
+    isPageSsl = true;
+    cookieJar = {
+      get: vi.fn(),
+      set: vi.fn(),
+    };
+    legacyIdentity = undefined;
+  });
   const build = () => {
     legacyIdentity = createLegacyIdentity({
       config: {
         idMigrationEnabled,
-        orgId
+        orgId,
       },
-      getEcidFromVisitor
+      getEcidFromVisitor,
+      apexDomain,
+      isPageSsl,
+      cookieJar,
     });
   };
-
-  beforeEach(() => {
-    idMigrationEnabled = true;
-    removeAllCookies();
-  });
-
-  afterEach(removeAllCookies);
-
   describe("getEcid", () => {
-    it("should return a promise resolved with undefined if ID migration disabled", () => {
+    it("should return a promise resolved with undefined if ID migration disabled", async () => {
       idMigrationEnabled = false;
       build();
-      return expectAsync(legacyIdentity.getEcid()).toBeResolvedTo(undefined);
+      const result = await legacyIdentity.getEcid();
+      expect(result).toBeUndefined();
+      expect(cookieJar.get).not.toHaveBeenCalled();
     });
-
-    it("should return promise resolved with undefined if no AMCV cookie or s_ecid cookie is present", () => {
+    it("should return promise resolved with undefined if no AMCV cookie or s_ecid cookie is present", async () => {
       build();
-      return expectAsync(legacyIdentity.getEcid()).toBeResolvedTo(undefined);
+      const result = await legacyIdentity.getEcid();
+      expect(result).toBeUndefined();
     });
-
     [
       "random|string|MCMID|1234|random|random",
       "MCMID|1234|random|random",
       "random|random|MCMID|1234",
-      "MCMID|1234"
-    ].forEach(cookieValue => {
-      it(`should return promise resolved with ECID if AMCV cookie is ${cookieValue}`, () => {
-        cookieJar.set("AMCV_TEST_ORG", cookieValue);
+      "MCMID|1234",
+    ].forEach((cookieValue) => {
+      it(`should return promise resolved with ECID if AMCV cookie is ${cookieValue}`, async () => {
+        cookieJar.get.mockImplementation((cookieName) =>
+          cookieName === "AMCV_TEST_ORG" ? cookieValue : undefined,
+        );
         build();
-        return expectAsync(legacyIdentity.getEcid()).toBeResolvedTo("1234");
+        expect(await legacyIdentity.getEcid()).toEqual("1234");
       });
-
-      it(`should return promise resolved with ECID if s_ecid cookie is ${cookieValue}`, () => {
-        cookieJar.set("s_ecid", cookieValue);
+      it(`should return promise resolved with ECID if s_ecid cookie is ${cookieValue}`, async () => {
+        cookieJar.get.mockImplementation((cookieName) =>
+          cookieName === "s_ecid" ? cookieValue : undefined,
+        );
         build();
-        return expectAsync(legacyIdentity.getEcid()).toBeResolvedTo("1234");
+        expect(await legacyIdentity.getEcid()).toEqual("1234");
       });
     });
-
-    it("should return promise resolved with undefined if AMCV does not contain MCMID", () => {
+    it("should return promise resolved with undefined cookie does not contain MCMID", async () => {
       const cookieValue = "version|0.0.4";
-      cookieJar.set("AMCV_NO_MID", cookieValue);
+      cookieJar.get.mockReturnValue(cookieValue);
       build();
-      return expectAsync(legacyIdentity.getEcid()).toBeResolvedTo(undefined);
+      expect(await legacyIdentity.getEcid()).toBeUndefined();
     });
-
-    it("should return promise resolved with undefined if s_ecid does not contain MCMID", () => {
-      const cookieValue = "version|0.0.4";
-      cookieJar.set("s_ecid", cookieValue);
+    it("should request ECID from visitor ID Service if legacy ECID cookies are missing", async () => {
+      getEcidFromVisitor.mockReturnValue(Promise.resolve("visitor_ecid"));
       build();
-      return expectAsync(legacyIdentity.getEcid()).toBeResolvedTo(undefined);
-    });
-
-    it("should request ECID from visitor ID Service if legacy ECID cookies are missing", () => {
-      build();
-      return legacyIdentity.getEcid().then(() => {
-        expect(getEcidFromVisitor).toHaveBeenCalled();
-      });
+      expect(await legacyIdentity.getEcid()).toEqual("visitor_ecid");
     });
   });
-
   describe("setEcid", () => {
     it("should not write AMCV cookie if ID migration disabled", () => {
       idMigrationEnabled = false;
       build();
       legacyIdentity.setEcid("1234");
-      expect(cookieJar.get("AMCV_TEST_ORG")).toBeUndefined();
+      expect(cookieJar.set).not.toHaveBeenCalled();
+    });
+    it("writes a secure AMCV cookie", () => {
+      build();
+      legacyIdentity.setEcid("1234");
+      expect(cookieJar.set).toHaveBeenNthCalledWith(
+        1,
+        "AMCV_TEST_ORG",
+        "MCMID|1234",
+        {
+          domain: "mydomain",
+          expires: 390,
+          sameSite: "none",
+          secure: true,
+        },
+      );
+    });
+    it("writes an insecure AMCV cookie", () => {
+      isPageSsl = false;
+      build();
+      legacyIdentity.setEcid("1234");
+      expect(cookieJar.set).toHaveBeenNthCalledWith(
+        1,
+        "AMCV_TEST_ORG",
+        "MCMID|1234",
+        {
+          domain: "mydomain",
+          expires: 390,
+        },
+      );
     });
     it("should not write AMCV cookie if already present", () => {
+      cookieJar.get.mockReturnValue("MCMID|1234|otherstuff");
       build();
-      const cookieValue = "existing value";
-      cookieJar.set("AMCV_TEST_ORG", cookieValue);
       legacyIdentity.setEcid("1234");
-      expect(cookieJar.get("AMCV_TEST_ORG")).toEqual(cookieValue);
+      expect(cookieJar.set).not.toHaveBeenCalled();
     });
   });
 });

@@ -10,16 +10,16 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import getChildNodes from "../../../../../../../src/components/Personalization/dom-actions/dom/getChildNodes";
-import createFragment from "../../../../../../../src/components/Personalization/dom-actions/dom/createFragment";
+import { describe, it, expect } from "vitest";
+import getChildNodes from "../../../../../../../src/components/Personalization/dom-actions/dom/getChildNodes.js";
+import createFragment from "../../../../../../../src/components/Personalization/dom-actions/dom/createFragment.js";
 
 describe("Personalization::helper::dom::getChildNodes", () => {
   it("returns an array of child nodes", () => {
     const element = createFragment(
-      `<div id="foo">foo</div><h1>hello there</h1><div id="div2"></div>`
+      `<div id="foo">foo</div><h1>hello there</h1><div id="div2"></div>`,
     );
     const result = getChildNodes(element);
-
     expect(result.length).toEqual(3);
     expect(result[0].tagName).toEqual("DIV");
     expect(result[1].tagName).toEqual("H1");
@@ -29,7 +29,6 @@ describe("Personalization::helper::dom::getChildNodes", () => {
   it("returns undefined when there are no children", () => {
     const element = createFragment();
     const result = getChildNodes(element);
-
     expect(result.length).toEqual(1);
     expect(result[0].tagName).toBeUndefined();
   });

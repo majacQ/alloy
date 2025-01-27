@@ -10,9 +10,10 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import buildAndValidateConfig from "../../../../src/core/buildAndValidateConfig";
-import createConfig from "../../../../src/core/config/createConfig";
-import { boolean } from "../../../../src/utils/validation";
+import { vi, beforeEach, describe, it, expect } from "vitest";
+import buildAndValidateConfig from "../../../../src/core/buildAndValidateConfig.js";
+import createConfig from "../../../../src/core/config/createConfig.js";
+import { boolean, objectOf } from "../../../../src/utils/validation/index.js";
 
 describe("buildAndValidateConfig", () => {
   let options;
@@ -20,40 +21,41 @@ describe("buildAndValidateConfig", () => {
   let coreConfigValidators;
   let logger;
   let setDebugEnabled;
-
   beforeEach(() => {
     options = {};
     const componentCreator = () => {};
-    componentCreator.configValidators = {
-      idSyncEnabled: boolean().default(true)
-    };
+    componentCreator.configValidators = objectOf({
+      idSyncEnabled: boolean().default(true),
+    });
     componentCreators = [componentCreator];
-    coreConfigValidators = {
+    coreConfigValidators = objectOf({
       debugEnabled: boolean().default(false),
-      errorsEnabled: boolean()
-    };
+      errorsEnabled: boolean(),
+    })
+      .noUnknownFields()
+      .required();
     logger = {
       enabled: false,
-      info: jasmine.createSpy(),
-      logOnBeforeCommand: jasmine.createSpy(),
-      logOnInstanceConfigured: jasmine.createSpy()
+      info: vi.fn(),
+      logOnBeforeCommand: vi.fn(),
+      logOnInstanceConfigured: vi.fn(),
     };
-    setDebugEnabled = jasmine.createSpy();
+    setDebugEnabled = vi.fn();
   });
-
   it("adds validators and validates options", () => {
     expect(() => {
       buildAndValidateConfig({
-        options: { idSyncEnabled: "invalid value" },
+        options: {
+          idSyncEnabled: "invalid value",
+        },
         componentCreators,
         coreConfigValidators,
         createConfig,
         logger,
-        setDebugEnabled
+        setDebugEnabled,
       });
     }).toThrowError();
   });
-
   it("sets debug enabled based on config", () => {
     options.debugEnabled = true;
     buildAndValidateConfig({
@@ -62,11 +64,12 @@ describe("buildAndValidateConfig", () => {
       coreConfigValidators,
       createConfig,
       logger,
-      setDebugEnabled
+      setDebugEnabled,
     });
-    expect(setDebugEnabled).toHaveBeenCalledWith(true, { fromConfig: true });
+    expect(setDebugEnabled).toHaveBeenCalledWith(true, {
+      fromConfig: true,
+    });
   });
-
   it("logs and returns computed configuration", () => {
     logger.enabled = true;
     buildAndValidateConfig({
@@ -75,16 +78,15 @@ describe("buildAndValidateConfig", () => {
       coreConfigValidators,
       createConfig,
       logger,
-      setDebugEnabled
+      setDebugEnabled,
     });
     expect(logger.logOnInstanceConfigured).toHaveBeenCalledWith({
       config: {
         debugEnabled: false,
-        idSyncEnabled: true
-      }
+        idSyncEnabled: true,
+      },
     });
   });
-
   it("throws an error for unknown fields", () => {
     logger.enabled = true;
     options.foo = "bar";
@@ -95,11 +97,10 @@ describe("buildAndValidateConfig", () => {
         coreConfigValidators,
         createConfig,
         logger,
-        setDebugEnabled
-      })
+        setDebugEnabled,
+      }),
     ).toThrowError();
   });
-
   it("returns config", () => {
     const result = buildAndValidateConfig({
       options,
@@ -107,8 +108,11 @@ describe("buildAndValidateConfig", () => {
       coreConfigValidators,
       createConfig,
       logger,
-      setDebugEnabled
+      setDebugEnabled,
     });
-    expect(result).toEqual({ idSyncEnabled: true, debugEnabled: false });
+    expect(result).toEqual({
+      idSyncEnabled: true,
+      debugEnabled: false,
+    });
   });
 });

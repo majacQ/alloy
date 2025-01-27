@@ -9,56 +9,54 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-
-import { flatMap } from "../utils";
-import { ADOBE_EDGE } from "../constants/httpHeaderNames";
+import { ADOBE_EDGE } from "../constants/httpHeaderNames.js";
 
 /**
  * Creates a representation of a gateway response with the addition of
  * helper methods.
  * @returns Response
  */
-export default ({ extractEdgeInfo }) => ({ content = {}, getHeader }) => {
-  const { handle = [], errors = [], warnings = [] } = content;
+export default ({ extractEdgeInfo }) =>
+  ({ content = {}, getHeader }) => {
+    const { handle = [], errors = [], warnings = [] } = content;
 
-  /**
-   * Response object.
-   * @typedef {Object} Response
-   */
-  return {
     /**
-     * Returns matching fragments of the response by type.
-     * @param {String} type A string with the current format: <namespace:action>
-     *
-     * @example
-     * getPayloadsByType("identity:persist")
+     * Response object.
+     * @typedef {Object} Response
      */
-    getPayloadsByType(type) {
-      return flatMap(
-        handle.filter(fragment => fragment.type === type),
-        fragment => fragment.payload
-      );
-    },
-    /**
-     * Returns all errors.
-     */
-    getErrors() {
-      return errors;
-    },
-    /**
-     * Returns all warnings.
-     */
-    getWarnings() {
-      return warnings;
-    },
-    /**
-     * Returns an object containing the regionId from the x-adobe-edge header
-     */
-    getEdge() {
-      return extractEdgeInfo(getHeader(ADOBE_EDGE));
-    },
-    toJSON() {
-      return content;
-    }
+    return {
+      /**
+       * Returns matching fragments of the response by type.
+       * @param {String} type A string with the current format: <namespace:action>
+       *
+       * @example
+       * getPayloadsByType("identity:persist")
+       */
+      getPayloadsByType(type) {
+        return handle
+          .filter((fragment) => fragment.type === type)
+          .flatMap((fragment) => fragment.payload);
+      },
+      /**
+       * Returns all errors.
+       */
+      getErrors() {
+        return errors;
+      },
+      /**
+       * Returns all warnings.
+       */
+      getWarnings() {
+        return warnings;
+      },
+      /**
+       * Returns an object containing the regionId from the x-adobe-edge header
+       */
+      getEdge() {
+        return extractEdgeInfo(getHeader(ADOBE_EDGE));
+      },
+      toJSON() {
+        return content;
+      },
+    };
   };
-};

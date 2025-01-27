@@ -1,18 +1,18 @@
 import React from "react";
 
-const getQueryStringParameter = key => {
-  var searchParams = new URLSearchParams(window.location.search);
+const getQueryStringParameter = (key) => {
+  const searchParams = new URLSearchParams(window.location.search);
   return searchParams.get(key);
 };
 
 const urlWithUpdatedQueryStringParameter = (key, value, defaultValue) => {
-  var searchParams = new URLSearchParams(window.location.search);
+  const searchParams = new URLSearchParams(window.location.search);
   if (value !== defaultValue) {
     searchParams.set(key, value);
   } else {
     searchParams.delete(key);
   }
-  return window.location.pathname + "?" + searchParams;
+  return `${window.location.pathname}?${searchParams}`;
 };
 
 const defaultConsent = getQueryStringParameter("defaultConsent") || "in";
@@ -29,16 +29,15 @@ const ConfigurationLinks = ({ param, currentValue, defaultValue, options }) => {
           {label}
         </span>
       );
-    } else {
-      return (
-        <a
-          key={index}
-          href={urlWithUpdatedQueryStringParameter(param, value, defaultValue)}
-        >
-          {label}
-        </a>
-      );
     }
+    return (
+      <a
+        key={index}
+        href={urlWithUpdatedQueryStringParameter(param, value, defaultValue)}
+      >
+        {label}
+      </a>
+    );
   });
 };
 
@@ -57,7 +56,7 @@ export default () => {
               options={[
                 { value: "pending", label: "Set to pending" },
                 { value: "in", label: "Set to in" },
-                { value: "out", label: "Set to out" }
+                { value: "out", label: "Set to out" },
               ]}
             />
           </td>
@@ -72,7 +71,7 @@ export default () => {
               defaultValue="true"
               options={[
                 { value: true, label: "Enable" },
-                { value: false, label: "Disable" }
+                { value: false, label: "Disable" },
               ]}
             />
           </td>
@@ -87,7 +86,7 @@ export default () => {
               defaultValue="false"
               options={[
                 { value: true, label: "Include" },
-                { value: false, label: "Remove" }
+                { value: false, label: "Remove" },
               ]}
             />
           </td>
@@ -102,7 +101,7 @@ export default () => {
               defaultValue="false"
               options={[
                 { value: true, label: "Enable" },
-                { value: false, label: "Disable" }
+                { value: false, label: "Disable" },
               ]}
             />
           </td>

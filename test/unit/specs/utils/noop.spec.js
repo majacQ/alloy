@@ -10,7 +10,8 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import noop from "../../../../src/utils/noop";
+import { describe, it, expect } from "vitest";
+import noop from "../../../../src/utils/noop.js";
 
 describe("noop", () => {
   it("accepts any arguments and returns undefined", () => {

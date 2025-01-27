@@ -10,105 +10,70 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import createViewChangeHandler from "../../../../../src/components/Personalization/createViewChangeHandler";
-import { CART_VIEW_DECISIONS } from "./responsesMock/eventResponses";
+import { vi, beforeEach, describe, it, expect } from "vitest";
+import createViewChangeHandler from "../../../../../src/components/Personalization/createViewChangeHandler.js";
+import { CART_VIEW_DECISIONS } from "./responsesMock/eventResponses.js";
+import injectCreateProposition from "../../../../../src/components/Personalization/handlers/injectCreateProposition.js";
 
 describe("Personalization::createViewChangeHandler", () => {
-  let personalizationDetails;
+  let processPropositions;
   let viewCache;
-  const event = {};
-
-  const onResponse = callback => callback();
-  let executeDecisions;
-  let showContainers;
-  let mergeDecisionsMeta;
-  let collect;
-
+  let personalizationDetails;
+  let event;
+  let onResponse;
+  let logger;
+  let createProposition;
   beforeEach(() => {
-    personalizationDetails = jasmine.createSpyObj("personalizationDetails", [
-      "isRenderDecisions",
-      "getViewName"
-    ]);
-    viewCache = jasmine.createSpyObj("viewCache", ["getView"]);
-    executeDecisions = jasmine.createSpy("executeDecisions");
-    showContainers = jasmine.createSpy("showContainers");
-    mergeDecisionsMeta = jasmine.createSpy("mergeDecisionsMeta");
-    collect = jasmine.createSpy("collect");
-  });
-
-  it("should trigger executeDecisions if renderDecisions is true", () => {
-    const cartViewPromise = {
-      then: callback => callback(CART_VIEW_DECISIONS)
+    logger = {
+      logOnContentRendering: vi.fn(),
     };
-
-    viewCache.getView.and.returnValue(cartViewPromise);
-    executeDecisions.and.returnValue(cartViewPromise);
-    personalizationDetails.isRenderDecisions.and.returnValue(true);
-    personalizationDetails.getViewName.and.returnValue("cart");
-
-    const viewChangeHandler = createViewChangeHandler({
-      mergeDecisionsMeta,
-      collect,
-      executeDecisions,
-      viewCache
-    });
-
-    viewChangeHandler({
-      event,
-      personalizationDetails,
-      onResponse
-    });
-    expect(executeDecisions).toHaveBeenCalledWith(CART_VIEW_DECISIONS);
-    expect(mergeDecisionsMeta).toHaveBeenCalledWith(event, CART_VIEW_DECISIONS);
-    expect(collect).not.toHaveBeenCalled();
-  });
-
-  it("should not trigger executeDecisions when render decisions is false", () => {
-    const cartViewPromise = {
-      then: callback => callback(CART_VIEW_DECISIONS)
+    processPropositions = vi.fn();
+    viewCache = {
+      getView: vi.fn(),
     };
-    viewCache.getView.and.returnValue(cartViewPromise);
-    personalizationDetails.isRenderDecisions.and.returnValue(false);
-    personalizationDetails.getViewName.and.returnValue("cart");
-
+    personalizationDetails = {
+      isRenderDecisions: vi.fn(),
+      getViewName: vi.fn(),
+    };
+    event = "myevent";
+    onResponse = vi.fn();
+    createProposition = injectCreateProposition({
+      preprocess: (data) => data,
+      isPageWideSurface: () => false,
+    });
+  });
+  const run = async () => {
     const viewChangeHandler = createViewChangeHandler({
-      executeDecisions,
+      logger,
+      processPropositions,
       viewCache,
-      showContainers
     });
-
-    viewChangeHandler({
+    const decisionsMeta = await viewChangeHandler({
       event,
       personalizationDetails,
-      onResponse
+      onResponse,
     });
-    expect(executeDecisions).not.toHaveBeenCalled();
-    expect(collect).not.toHaveBeenCalled();
-  });
-
-  it("at onResponse it should trigger collect call when no decisions in cache", () => {
-    const cartViewPromise = {
-      then: callback => callback([])
+    const result = onResponse.mock.calls[0][0]();
+    return {
+      decisionsMeta,
+      result,
     };
-
-    viewCache.getView.and.returnValue(cartViewPromise);
-    executeDecisions.and.returnValue(cartViewPromise);
-    personalizationDetails.isRenderDecisions.and.returnValue(true);
-    personalizationDetails.getViewName.and.returnValue("cart");
-
-    const viewChangeHandler = createViewChangeHandler({
-      mergeDecisionsMeta,
-      collect,
-      executeDecisions,
-      viewCache
+  };
+  it("should trigger render if renderDecisions is true", async () => {
+    viewCache.getView.mockReturnValue(
+      Promise.resolve(CART_VIEW_DECISIONS.map((p) => createProposition(p))),
+    );
+    personalizationDetails.isRenderDecisions.mockReturnValue(true);
+    personalizationDetails.getViewName.mockReturnValue("cart");
+    processPropositions.mockReturnValue({
+      render: () => Promise.resolve("decisionMeta"),
+      returnedPropositions: [],
+      returnedDecisions: CART_VIEW_DECISIONS,
     });
-
-    viewChangeHandler({
-      event,
-      personalizationDetails,
-      onResponse
-    });
-    expect(executeDecisions).toHaveBeenCalledWith([]);
-    expect(collect).toHaveBeenCalled();
+    const { decisionsMeta, result } = await run();
+    expect(logger.logOnContentRendering).toHaveBeenCalledTimes(1);
+    expect(processPropositions).toHaveBeenCalledTimes(1);
+    expect(decisionsMeta).toEqual("decisionMeta");
+    expect(result.decisions).toEqual(CART_VIEW_DECISIONS);
   });
 });

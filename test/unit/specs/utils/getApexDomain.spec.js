@@ -10,27 +10,26 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import getApexDomain from "../../../../src/utils/getApexDomain";
+import { vi, describe, it, expect } from "vitest";
+import getApexDomain from "../../../../src/utils/getApexDomain.js";
 
-const mockWindowWithHostname = hostname => {
+const mockWindowWithHostname = (hostname) => {
   return {
     location: {
-      hostname
-    }
+      hostname,
+    },
   };
 };
-
 describe("getTld", () => {
   it("returns an empty string when only one host part exists", () => {
     const window = mockWindowWithHostname("localhost");
     const cookieJar = {
       get() {},
       set() {},
-      remove() {}
+      remove() {},
     };
     expect(getApexDomain(window, cookieJar)).toBe("");
   });
-
   it("returns the first host that allows a cookie to be set", () => {
     const window = mockWindowWithHostname("a.b.c.co.uk");
     let storedValue;
@@ -43,13 +42,11 @@ describe("getTld", () => {
           storedValue = value;
         }
       },
-      remove: jasmine.createSpy()
+      remove: vi.fn(),
     };
-
     expect(getApexDomain(window, cookieJar)).toBe("c.co.uk");
     expect(cookieJar.remove).toHaveBeenCalled();
   });
-
   it("tries all segments of the hostname if necessary", () => {
     const window = mockWindowWithHostname("10.30.34.68");
     let storedValue;
@@ -62,9 +59,8 @@ describe("getTld", () => {
           storedValue = value;
         }
       },
-      remove: jasmine.createSpy()
+      remove: vi.fn(),
     };
-
     expect(getApexDomain(window, cookieJar)).toBe("10.30.34.68");
     expect(cookieJar.remove).toHaveBeenCalled();
   });

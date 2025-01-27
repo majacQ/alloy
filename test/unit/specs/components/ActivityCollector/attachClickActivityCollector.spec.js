@@ -10,8 +10,9 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import attachClickActivityCollector from "../../../../../src/components/ActivityCollector/attachClickActivityCollector";
-import flushPromiseChains from "../../../helpers/flushPromiseChains";
+import { vi, beforeEach, describe, it, expect } from "vitest";
+import attachClickActivityCollector from "../../../../../src/components/ActivityCollector/attachClickActivityCollector.js";
+import flushPromiseChains from "../../../helpers/flushPromiseChains.js";
 
 describe("ActivityCollector::attachClickActivityCollector", () => {
   const config = {};
@@ -21,51 +22,57 @@ describe("ActivityCollector::attachClickActivityCollector", () => {
   let handleError;
   beforeEach(() => {
     config.clickCollectionEnabled = true;
-    eventManager = jasmine.createSpyObj("eventManager", {
-      createEvent: {
-        isEmpty: () => false
-      },
-      sendEvent: Promise.resolve()
-    });
-    lifecycle = jasmine.createSpyObj("lifecycle", {
-      onClick: Promise.resolve()
-    });
-    // eslint-disable-next-line no-unused-vars
-    spyOn(document, "addEventListener").and.callFake((name, handler, type) => {
-      clickHandler = handler;
-    });
-    handleError = jasmine.createSpy("handleError");
-  });
+    eventManager = {
+      createEvent: vi.fn().mockReturnValue({
+        isEmpty: () => false,
+        documentMayUnload: () => false,
+      }),
+      sendEvent: vi.fn().mockReturnValue(Promise.resolve()),
+    };
+    lifecycle = {
+      onClick: vi.fn().mockReturnValue(Promise.resolve()),
+    };
 
+    vi.spyOn(document, "addEventListener").mockImplementation(
+      (name, handler) => {
+        clickHandler = handler;
+      },
+    );
+    handleError = vi.fn();
+  });
   const build = () => {
     attachClickActivityCollector({
       config,
       eventManager,
       lifecycle,
-      handleError
+      handleError,
     });
   };
-
   it("Attaches click handler if clickCollectionEnabled is set to true", () => {
     build();
     expect(document.addEventListener).toHaveBeenCalled();
   });
-
-  it("Does not attach click handler if clickCollectionEnabled is set to false", () => {
+  it("Attaches click handler if clickCollectionEnabled is set to false", () => {
     config.clickCollectionEnabled = false;
     build();
-    expect(document.addEventListener).not.toHaveBeenCalled();
+    expect(document.addEventListener).toHaveBeenCalled();
   });
-
   it("Publishes onClick lifecycle events at clicks when clickCollectionEnabled is set to true", () => {
     build();
     clickHandler({});
     expect(lifecycle.onClick).toHaveBeenCalled();
   });
-
+  it("Does not publish onClick lifecycle events for AppMeasurement repropagated click-events", () => {
+    build();
+    const clickEvent = {
+      s_fe: 1,
+    };
+    clickHandler(clickEvent);
+    expect(lifecycle.onClick).not.toHaveBeenCalled();
+  });
   it("Handles errors inside onClick lifecycle", () => {
     const error = new Error("Bad thing happened.");
-    lifecycle.onClick.and.returnValue(Promise.reject(error));
+    lifecycle.onClick.mockReturnValue(Promise.reject(error));
     build();
     return clickHandler({})
       .then(() => {
@@ -75,7 +82,6 @@ describe("ActivityCollector::attachClickActivityCollector", () => {
         expect(handleError).toHaveBeenCalledWith(error, "click collection");
       });
   });
-
   it("Sends populated events", () => {
     build();
     return clickHandler({})
@@ -86,10 +92,10 @@ describe("ActivityCollector::attachClickActivityCollector", () => {
         expect(eventManager.sendEvent).toHaveBeenCalled();
       });
   });
-
   it("Does not send empty events", () => {
-    eventManager.createEvent.and.returnValue({
-      isEmpty: () => true
+    eventManager.createEvent.mockReturnValue({
+      isEmpty: () => true,
+      documentMayUnload: () => false,
     });
     build();
     return clickHandler({})
@@ -100,10 +106,9 @@ describe("ActivityCollector::attachClickActivityCollector", () => {
         expect(eventManager.sendEvent).not.toHaveBeenCalled();
       });
   });
-
   it("handles errors thrown in sendEvent", () => {
     const error = new Error("Network Error");
-    eventManager.sendEvent.and.returnValue(Promise.reject(error));
+    eventManager.sendEvent.mockReturnValue(Promise.reject(error));
     build();
     return clickHandler({})
       .then(() => {

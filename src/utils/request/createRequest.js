@@ -10,11 +10,18 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import { uuid } from "..";
+import { uuid } from "../index.js";
 
 // This provides the base functionality that all types of requests share.
-export default options => {
-  const { payload, getAction, getUseSendBeacon } = options;
+export default (options) => {
+  const {
+    payload,
+    getAction,
+    getUseSendBeacon,
+    datastreamIdOverride,
+    edgeSubPath,
+  } = options;
+
   const id = uuid();
   let shouldUseThirdPartyDomain = false;
   let isIdentityEstablished = false;
@@ -29,8 +36,17 @@ export default options => {
     getAction() {
       return getAction({ isIdentityEstablished });
     },
+    getDatastreamIdOverride() {
+      return datastreamIdOverride;
+    },
     getUseSendBeacon() {
       return getUseSendBeacon({ isIdentityEstablished });
+    },
+    getEdgeSubPath() {
+      if (edgeSubPath) {
+        return edgeSubPath;
+      }
+      return "";
     },
     getUseIdThirdPartyDomain() {
       return shouldUseThirdPartyDomain;
@@ -40,6 +56,6 @@ export default options => {
     },
     setIsIdentityEstablished() {
       isIdentityEstablished = true;
-    }
+    },
   };
 };

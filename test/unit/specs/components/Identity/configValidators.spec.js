@@ -10,8 +10,9 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-import configValidators from "../../../../../src/components/Identity/configValidators";
-import testConfigValidators from "../../../helpers/testConfigValidators";
+import { describe } from "vitest";
+import configValidators from "../../../../../src/components/Identity/configValidators.js";
+import testConfigValidators from "../../../helpers/testConfigValidators.js";
 
 describe("Identity config validators", () => {
   testConfigValidators({
@@ -19,23 +20,23 @@ describe("Identity config validators", () => {
     validConfigurations: [
       {},
       {
-        thirdPartyCookiesEnabled: false
+        thirdPartyCookiesEnabled: false,
       },
       {
-        idMigrationEnabled: true
-      }
+        idMigrationEnabled: true,
+      },
     ],
     invalidConfigurations: [
       {
-        thirdPartyCookiesEnabled: 42
+        thirdPartyCookiesEnabled: 42,
       },
       {
-        idMigrationEnabled: () => {}
-      }
+        idMigrationEnabled: () => {},
+      },
     ],
     defaultValues: {
       thirdPartyCookiesEnabled: true,
-      idMigrationEnabled: true
-    }
+      idMigrationEnabled: true,
+    },
   });
 });

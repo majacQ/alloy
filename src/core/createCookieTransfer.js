@@ -9,13 +9,14 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-
-import { endsWith, isNamespacedCookieName } from "../utils";
-import convertTimes, { DAY, SECOND } from "../utils/convertTimes";
-
 const STATE_STORE_HANDLE_TYPE = "state:store";
 
-export default ({ cookieJar, orgId, apexDomain }) => {
+export default ({
+  cookieJar,
+  shouldTransferCookie,
+  apexDomain,
+  dateProvider,
+}) => {
   return {
     /**
      * When sending to a third-party endpoint, the endpoint won't be able to
@@ -23,11 +24,13 @@ export default ({ cookieJar, orgId, apexDomain }) => {
      * the request body so they can be read by the server.
      */
     cookiesToPayload(payload, endpointDomain) {
-      const isEndpointFirstParty = endsWith(endpointDomain, apexDomain);
-
+      // localhost is a special case where the apexDomain is ""
+      // We want to treat localhost as a third-party domain.
+      const isEndpointFirstParty =
+        apexDomain !== "" && endpointDomain.endsWith(apexDomain);
       const state = {
         domain: apexDomain,
-        cookiesEnabled: true
+        cookiesEnabled: true,
       };
 
       // If the endpoint is first-party, there's no need to transfer cookies
@@ -37,18 +40,11 @@ export default ({ cookieJar, orgId, apexDomain }) => {
         const cookies = cookieJar.get();
 
         const entries = Object.keys(cookies)
-          .filter(name => {
-            // We have a contract with the server that we will pass
-            // all cookies whose names are namespaced according to the
-            // logic in isNamespacedCookieName as well as any legacy
-            // cookie names (so that the server can handle migrating
-            // identities on websites previously using Visitor.js)
-            return isNamespacedCookieName(orgId, name);
-          })
-          .map(qualifyingCookieName => {
+          .filter(shouldTransferCookie)
+          .map((qualifyingCookieName) => {
             return {
               key: qualifyingCookieName,
-              value: cookies[qualifyingCookieName]
+              value: cookies[qualifyingCookieName],
             };
           });
 
@@ -65,16 +61,33 @@ export default ({ cookieJar, orgId, apexDomain }) => {
      * as directed in the response body.
      */
     responseToCookies(response) {
-      response.getPayloadsByType(STATE_STORE_HANDLE_TYPE).forEach(stateItem => {
-        const options = { domain: apexDomain };
+      response
+        .getPayloadsByType(STATE_STORE_HANDLE_TYPE)
+        .forEach((stateItem) => {
+          const options = { domain: apexDomain };
 
-        if (stateItem.maxAge !== undefined) {
-          // cookieJar expects "expires" in days
-          options.expires = convertTimes(SECOND, DAY, stateItem.maxAge);
-        }
+          const sameSite =
+            stateItem.attrs &&
+            stateItem.attrs.SameSite &&
+            stateItem.attrs.SameSite.toLowerCase();
 
-        cookieJar.set(stateItem.key, stateItem.value, options);
-      });
-    }
+          if (stateItem.maxAge !== undefined) {
+            // cookieJar expects "expires" as a date object
+            options.expires = new Date(
+              dateProvider().getTime() + stateItem.maxAge * 1000,
+            );
+          }
+          if (sameSite !== undefined) {
+            options.sameSite = sameSite;
+          }
+          // When sameSite is set to none, the secure flag must be set.
+          // Experience edge will not set the secure flag in these cases.
+          if (sameSite === "none") {
+            options.secure = true;
+          }
+
+          cookieJar.set(stateItem.key, stateItem.value, options);
+        });
+    },
   };
 };
